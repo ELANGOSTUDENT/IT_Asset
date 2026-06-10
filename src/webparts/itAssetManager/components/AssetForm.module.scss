@@ -1,0 +1,83 @@
+@import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
+
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 24px 12px;
+  border-bottom: 1px solid $ms-color-neutralLight;
+  background: $ms-color-neutralLighterAlt;
+}
+
+.backBtn {
+  margin-top: 2px;
+}
+
+.title {
+  font-weight: 600;
+  color: $ms-color-neutralPrimary;
+}
+
+.idPreview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: $ms-color-neutralSecondary;
+
+  i { color: $ms-color-themePrimary; }
+
+  strong {
+    font-family: 'Courier New', monospace;
+    color: $ms-color-themePrimary;
+    font-size: 14px;
+  }
+}
+
+.form {
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.section {
+  background: #fff;
+  border: 1px solid $ms-color-neutralLight;
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  font-size: 13px;
+  color: $ms-color-neutralSecondary;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.errText {
+  font-size: 12px;
+  color: $ms-color-errorText;
+  margin-top: 4px;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid $ms-color-neutralLight;
+  background: $ms-color-neutralLighterAlt;
+}

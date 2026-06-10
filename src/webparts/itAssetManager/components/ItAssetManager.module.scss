@@ -1,0 +1,87 @@
+@import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+$shadow-header: 0 1.6px 3.6px rgba(0,0,0,.132), 0 0.3px 0.9px rgba(0,0,0,.108);
+
+// ── Root shell ────────────────────────────────────────────────────────────────
+.root {
+  padding: 0 0 40px;
+  font-family: $ms-font-family-fallbacks;
+  color: $ms-color-neutralPrimary;
+  background: $ms-color-neutralLighterAlt;
+  min-height: 600px;
+
+  // MessageBar sits flush across the full width, below header
+  :global(.ms-MessageBar) {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    margin: 0;
+  }
+}
+
+// ── App header ────────────────────────────────────────────────────────────────
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #fff;
+  border-bottom: 1px solid $ms-color-neutralLight;
+  box-shadow: $shadow-header;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: $ms-color-neutralPrimary;
+  letter-spacing: -0.3px;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: $ms-color-neutralSecondary;
+  font-weight: 400;
+}
+
+// Pill badge showing total asset count
+.badge {
+  background: linear-gradient(135deg, $ms-color-themePrimary 0%, $ms-color-themeDark 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.35);
+  transition: box-shadow 0.15s ease;
+
+  &:hover {
+    box-shadow: 0 3px 12px rgba(0, 120, 212, 0.45);
+  }
+}
+
+// ── Tab pivot ────────────────────────────────────────────────────────────────
+.pivot {
+  background: #fff;
+  border-bottom: 1px solid $ms-color-neutralLight;
+  padding: 0 16px;
+
+  // Tighten the built-in Pivot bottom padding
+  :global(.ms-Pivot) {
+    padding-bottom: 0;
+  }
+
+  :global(.ms-Pivot-link) {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  :global(.ms-Pivot-link.is-selected) {
+    font-weight: 600;
+  }
+}

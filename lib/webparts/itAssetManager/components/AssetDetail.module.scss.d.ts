@@ -1,0 +1,29 @@
+declare const styles: {
+    root: string;
+    header: string;
+    headerCenter: string;
+    assetId: string;
+    headerActions: string;
+    body: string;
+    details: string;
+    rightPanel: string;
+    card: string;
+    cardTitle: string;
+    fieldGrid: string;
+    field: string;
+    fieldLabel: string;
+    fieldValue: string;
+    remarks: string;
+    attachLink: string;
+    repairEntry: string;
+    repairHeader: string;
+    timeline: string;
+    timelineItem: string;
+    timelineDot: string;
+    timelineContent: string;
+    timelineAction: string;
+    timelineMeta: string;
+    timelineNote: string;
+};
+export default styles;
+//# sourceMappingURL=AssetDetail.module.scss.d.ts.map

@@ -1,0 +1,76 @@
+{
+  "_comment": "Power Automate Flow: Warranty Expiry Check (90-day horizon)",
+  "_import_instructions": [
+    "This flow has TWO trigger options:",
+    "Option A (Webhook - triggered from SPFx): 'When an HTTP request is received'",
+    "Option B (Scheduled - runs automatically): 'Recurrence' every Monday at 08:00 IST",
+    "  → For Option B, replace the trigger with a Scheduled flow and",
+    "    use SharePoint 'Get items' action to query IT_Assets list directly.",
+    "Recommended: Use Option B so warranty checks run automatically without opening the app."
+  ],
+  "trigger_option_a": {
+    "type": "When an HTTP request is received",
+    "method": "POST",
+    "requestBodyJsonSchema": {
+      "type": "object",
+      "properties": {
+        "event":  { "type": "string" },
+        "count":  { "type": "integer" },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "assetId":       { "type": "string" },
+              "model":         { "type": "string" },
+              "serialNumber":  { "type": "string" },
+              "assignedTo":    { "type": "string" },
+              "warrantyExpiry":{ "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "trigger_option_b_scheduled": {
+    "type": "Recurrence",
+    "frequency": "Week",
+    "interval": 1,
+    "startTime": "2026-01-06T02:30:00Z",
+    "_note": "02:30 UTC = 08:00 IST every Monday"
+  },
+  "actions_option_b": [
+    {
+      "type": "Get items",
+      "site": "https://YOUR_TENANT.sharepoint.com/sites/IT",
+      "list": "IT_Assets",
+      "filter": "WarrantyExpiry ge '@{utcNow()}' and WarrantyExpiry le '@{addDays(utcNow(), 90)}' and Status eq 'Active'",
+      "select": "Title,Model,SerialNumber,AssignedTo,AssignedToEmail,Department,WarrantyExpiry"
+    },
+    {
+      "type": "Condition",
+      "expression": "@greater(length(body('Get_items')?['value']), 0)",
+      "if_true": [
+        {
+          "type": "Create HTML table",
+          "from": "@body('Get_items')?['value']",
+          "columns": [
+            { "header": "Asset ID",     "value": "@item()?['Title']" },
+            { "header": "Model",        "value": "@item()?['Model']" },
+            { "header": "Serial No.",   "value": "@item()?['SerialNumber']" },
+            { "header": "Assigned To",  "value": "@item()?['AssignedTo']" },
+            { "header": "Department",   "value": "@item()?['Department']" },
+            { "header": "Expiry Date",  "value": "@item()?['WarrantyExpiry']" }
+          ]
+        },
+        {
+          "type": "Send an email (V2)",
+          "to": "it@zoomrx.com",
+          "subject": "⚠️ IT Assets: Warranty Expiring Within 90 Days (@{length(body('Get_items')?['value'])} devices)",
+          "body": "<h2>Warranty Expiry Report</h2><p>The following @{length(body('Get_items')?['value'])} active assets have warranties expiring within 90 days.</p>@{body('Create_HTML_table')}<p>Please initiate renewal or replacement procedures.</p>",
+          "importance": "Normal"
+        }
+      ]
+    }
+  ]
+}

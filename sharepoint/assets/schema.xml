@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Elements xmlns="http://schemas.microsoft.com/sharepoint/">
+
+  <!-- ============================================================ -->
+  <!--  IT_Assets  List                                             -->
+  <!-- ============================================================ -->
+  <ListInstance
+    TemplateType="100"
+    Title="IT_Assets"
+    Description="IT Asset Lifecycle Management - primary asset registry"
+    Url="Lists/IT_Assets"
+    EnableAttachments="TRUE">
+
+    <Data>
+      <Rows />
+    </Data>
+
+    <!-- Identity & classification -->
+    <Fields>
+      <!-- Title / AssetId is the built-in Title field -->
+
+      <Field Type="Text"     DisplayName="SerialNumber"      Name="SerialNumber"      Required="TRUE"  MaxLength="100" />
+      <Field Type="Text"     DisplayName="Model"             Name="Model"             Required="TRUE"  MaxLength="200" />
+      <Field Type="Text"     DisplayName="Vendor"            Name="Vendor"            Required="TRUE"  MaxLength="200" />
+      <Field Type="Text"     DisplayName="Country"           Name="Country"           Required="FALSE" MaxLength="10" />
+      <Field Type="Text"     DisplayName="OfficeCode"        Name="OfficeCode"        Required="FALSE" MaxLength="10" />
+      <Field Type="Number"   DisplayName="SequenceNumber"    Name="SequenceNumber"    Required="FALSE" />
+
+      <Field Type="Choice"   DisplayName="Status"            Name="Status"            Required="TRUE">
+        <CHOICES>
+          <CHOICE>Procured</CHOICE>
+          <CHOICE>Stock</CHOICE>
+          <CHOICE>Active</CHOICE>
+          <CHOICE>Repair</CHOICE>
+          <CHOICE>Transferred</CHOICE>
+          <CHOICE>Gifted</CHOICE>
+          <CHOICE>Lost</CHOICE>
+          <CHOICE>Stolen</CHOICE>
+          <CHOICE>Scrapped</CHOICE>
+          <CHOICE>Disposed</CHOICE>
+        </CHOICES>
+      </Field>
+
+      <Field Type="Choice"   DisplayName="AssetType"         Name="AssetType"         Required="TRUE">
+        <CHOICES>
+          <CHOICE>LAP</CHOICE>
+          <CHOICE>MAC</CHOICE>
+          <CHOICE>DTP</CHOICE>
+          <CHOICE>MON</CHOICE>
+          <CHOICE>DOC</CHOICE>
+          <CHOICE>MOB</CHOICE>
+          <CHOICE>NET</CHOICE>
+          <CHOICE>ACC</CHOICE>
+        </CHOICES>
+      </Field>
+
+      <!-- Procurement -->
+      <Field Type="Text"     DisplayName="PONumber"          Name="PONumber"          Required="FALSE" MaxLength="100" />
+      <Field Type="Text"     DisplayName="InvoiceNumber"     Name="InvoiceNumber"     Required="FALSE" MaxLength="100" />
+      <Field Type="Currency" DisplayName="Cost"              Name="Cost"              Required="FALSE" />
+      <Field Type="DateTime" DisplayName="PurchaseDate"      Name="PurchaseDate"      Required="TRUE"  />
+      <Field Type="DateTime" DisplayName="WarrantyExpiry"    Name="WarrantyExpiry"    Required="FALSE" />
+      <Field Type="Text"     DisplayName="PurchaseBillUrl"   Name="PurchaseBillUrl"   Required="FALSE" MaxLength="500" />
+      <Field Type="Text"     DisplayName="PurchaseBillName"  Name="PurchaseBillName"  Required="FALSE" MaxLength="255" />
+
+      <!-- Stock / in-store details -->
+      <Field Type="DateTime" DisplayName="DateAddedToStock"       Name="DateAddedToStock"       Required="FALSE" />
+      <Field Type="Choice"   DisplayName="ConditionAtStockEntry"  Name="ConditionAtStockEntry"  Required="FALSE">
+        <CHOICES>
+          <CHOICE>Good</CHOICE>
+          <CHOICE>Refurbished</CHOICE>
+          <CHOICE>Damaged</CHOICE>
+        </CHOICES>
+      </Field>
+      <Field Type="Note"     DisplayName="StockRemarks"           Name="StockRemarks"           Required="FALSE" />
+
+      <!-- Gifted details -->
+      <Field Type="Text"     DisplayName="GiftedTo"           Name="GiftedTo"           Required="FALSE" MaxLength="255" />
+      <Field Type="DateTime" DisplayName="GiftedDate"         Name="GiftedDate"         Required="FALSE" />
+      <Field Type="Text"     DisplayName="GiftedAuthorisedBy" Name="GiftedAuthorisedBy" Required="FALSE" MaxLength="255" />
+      <Field Type="Note"     DisplayName="GiftedRemarks"      Name="GiftedRemarks"      Required="FALSE" />
+      <Field Type="Text"     DisplayName="GiftedAttachmentUrl" Name="GiftedAttachmentUrl" Required="FALSE" MaxLength="500" />
+
+      <!-- Transfer of ownership -->
+      <Field Type="Text"     DisplayName="TransferredFrom"      Name="TransferredFrom"      Required="FALSE" MaxLength="255" />
+      <Field Type="Text"     DisplayName="TransferredTo"        Name="TransferredTo"        Required="FALSE" MaxLength="255" />
+      <Field Type="DateTime" DisplayName="TransferDate"         Name="TransferDate"         Required="FALSE" />
+      <Field Type="Note"     DisplayName="TransferReason"       Name="TransferReason"       Required="FALSE" />
+      <Field Type="Text"     DisplayName="TransferAttachmentUrl" Name="TransferAttachmentUrl" Required="FALSE" MaxLength="500" />
+
+      <!-- Scrap / disposal details -->
+      <Field Type="DateTime" DisplayName="ScrapDate"          Name="ScrapDate"          Required="FALSE" />
+      <Field Type="Text"     DisplayName="ScrapVendor"        Name="ScrapVendor"        Required="FALSE" MaxLength="255" />
+      <Field Type="Text"     DisplayName="ScrapInvoiceNumber" Name="ScrapInvoiceNumber" Required="FALSE" MaxLength="100" />
+      <Field Type="Text"     DisplayName="ScrapPONumber"      Name="ScrapPONumber"      Required="FALSE" MaxLength="100" />
+      <Field Type="Currency" DisplayName="ScrapAmount"        Name="ScrapAmount"        Required="FALSE" />
+      <Field Type="Text"     DisplayName="EWasteCertNumber"   Name="EWasteCertNumber"   Required="FALSE" MaxLength="200" />
+      <Field Type="Text"     DisplayName="ScrapAttachmentUrl" Name="ScrapAttachmentUrl" Required="FALSE" MaxLength="500" />
+
+      <!-- Assignment (denormalised — kept for Dashboard/Table/Power Automate compatibility) -->
+      <Field Type="Text" DisplayName="AssignedTo"      Name="AssignedTo"      Required="FALSE" MaxLength="255" />
+      <Field Type="Text" DisplayName="AssignedToEmail" Name="AssignedToEmail" Required="FALSE" MaxLength="255" />
+      <Field Type="Text" DisplayName="Department"      Name="Department"      Required="FALSE" MaxLength="255" />
+      <Field Type="Text" DisplayName="AssetLocation"   Name="AssetLocation"   Required="FALSE" MaxLength="255" />
+
+      <!-- Remarks -->
+      <Field Type="Note" DisplayName="Remarks" Name="Remarks" Required="FALSE" />
+    </Fields>
+  </ListInstance>
+
+  <!-- ============================================================ -->
+  <!--  Asset_History  List  (unchanged)                            -->
+  <!-- ============================================================ -->
+  <ListInstance
+    TemplateType="100"
+    Title="Asset_History"
+    Description="Audit trail for all asset status and assignment changes"
+    Url="Lists/Asset_History"
+    EnableAttachments="FALSE">
+
+    <Data><Rows /></Data>
+
+    <Fields>
+      <!-- Title = AssetId -->
+      <Field Type="Text"     DisplayName="Action"          Name="Action"          Required="FALSE" MaxLength="100" />
+      <Field Type="Text"     DisplayName="PreviousStatus"  Name="PreviousStatus"  Required="FALSE" MaxLength="100" />
+      <Field Type="Text"     DisplayName="NewStatus"       Name="NewStatus"       Required="FALSE" MaxLength="100" />
+      <Field Type="Text"     DisplayName="ChangedBy"       Name="ChangedBy"       Required="FALSE" MaxLength="255" />
+      <Field Type="Text"     DisplayName="ChangedByEmail"  Name="ChangedByEmail"  Required="FALSE" MaxLength="255" />
+      <Field Type="DateTime" DisplayName="ChangedDate"     Name="ChangedDate"     Required="FALSE" />
+      <Field Type="Note"     DisplayName="HistoryNotes"    Name="HistoryNotes"    Required="FALSE" />
+    </Fields>
+  </ListInstance>
+
+  <!-- ============================================================ -->
+  <!--  Asset_Assignments  List  (new)                              -->
+  <!-- ============================================================ -->
+  <ListInstance
+    TemplateType="100"
+    Title="Asset_Assignments"
+    Description="Assignment records for each asset"
+    Url="Lists/Asset_Assignments"
+    EnableAttachments="FALSE">
+
+    <Data><Rows /></Data>
+
+    <Fields>
+      <!-- Title = AssetId -->
+      <Field Type="Number"   DisplayName="AssetItemId"           Name="AssetItemId"           Required="FALSE" />
+      <Field Type="Text"     DisplayName="SerialNumber"          Name="SerialNumber"          Required="FALSE" MaxLength="100" />
+      <Field Type="Text"     DisplayName="AssignedTo"            Name="AssignedTo"            Required="FALSE" MaxLength="255" />
+      <Field Type="Text"     DisplayName="AssignedToEmail"       Name="AssignedToEmail"       Required="FALSE" MaxLength="255" />
+      <Field Type="Text"     DisplayName="Department"            Name="Department"            Required="FALSE" MaxLength="255" />
+      <Field Type="Text"     DisplayName="AssetLocation"         Name="AssetLocation"         Required="FALSE" MaxLength="255" />
+      <Field Type="DateTime" DisplayName="DateOfAssignment"      Name="DateOfAssignment"      Required="FALSE" />
+      <Field Type="DateTime" DisplayName="LastMaintenanceDate"   Name="LastMaintenanceDate"   Required="FALSE" />
+      <Field Type="DateTime" DisplayName="NextMaintenanceDate"   Name="NextMaintenanceDate"   Required="FALSE" />
+      <Field Type="Note"     DisplayName="MaintenanceNotes"      Name="MaintenanceNotes"      Required="FALSE" />
+      <Field Type="Note"     DisplayName="AssignmentRemarks"     Name="AssignmentRemarks"     Required="FALSE" />
+      <Field Type="Boolean"  DisplayName="IsActive"              Name="IsActive"              Required="FALSE" />
+    </Fields>
+  </ListInstance>
+
+  <!-- ============================================================ -->
+  <!--  Asset_Repairs  List  (new)                                  -->
+  <!-- ============================================================ -->
+  <ListInstance
+    TemplateType="100"
+    Title="Asset_Repairs"
+    Description="Repair history entries for each asset"
+    Url="Lists/Asset_Repairs"
+    EnableAttachments="FALSE">
+
+    <Data><Rows /></Data>
+
+    <Fields>
+      <!-- Title = AssetId -->
+      <Field Type="Number"   DisplayName="AssetItemId"         Name="AssetItemId"         Required="FALSE" />
+      <Field Type="DateTime" DisplayName="RepairDate"          Name="RepairDate"          Required="FALSE" />
+      <Field Type="Text"     DisplayName="RepairVendor"        Name="RepairVendor"        Required="FALSE" MaxLength="255" />
+      <Field Type="Note"     DisplayName="IssueDescription"    Name="IssueDescription"    Required="FALSE" />
+      <Field Type="Currency" DisplayName="RepairCost"          Name="RepairCost"          Required="FALSE" />
+      <Field Type="Text"     DisplayName="RepairInvoiceNumber" Name="RepairInvoiceNumber" Required="FALSE" MaxLength="100" />
+      <Field Type="Text"     DisplayName="AttachmentUrl"       Name="AttachmentUrl"       Required="FALSE" MaxLength="500" />
+      <Field Type="Text"     DisplayName="AttachmentName"      Name="AttachmentName"      Required="FALSE" MaxLength="255" />
+    </Fields>
+  </ListInstance>
+
+</Elements>

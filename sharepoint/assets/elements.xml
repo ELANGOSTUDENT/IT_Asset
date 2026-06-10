@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Elements xmlns="http://schemas.microsoft.com/sharepoint/">
+
+  <ListInstance
+    TemplateType="100"
+    Title="IT_Assets"
+    Description="IT Asset Lifecycle Management – primary asset registry"
+    Url="Lists/IT_Assets"
+    EnableAttachments="TRUE" />
+
+  <ListInstance
+    TemplateType="100"
+    Title="Asset_History"
+    Description="Audit trail for all asset status and assignment changes"
+    Url="Lists/Asset_History"
+    EnableAttachments="FALSE" />
+
+  <ListInstance
+    TemplateType="100"
+    Title="Asset_Assignments"
+    Description="Assignment records — who has each asset, maintenance schedule"
+    Url="Lists/Asset_Assignments"
+    EnableAttachments="FALSE" />
+
+  <ListInstance
+    TemplateType="100"
+    Title="Asset_Repairs"
+    Description="Repair history entries for each asset"
+    Url="Lists/Asset_Repairs"
+    EnableAttachments="FALSE" />
+
+  <!-- Document library for purchase bills, repair invoices, gifted letters, etc. -->
+  <ListInstance
+    TemplateType="101"
+    Title="AssetAttachments"
+    Description="Asset lifecycle document attachments organised by AssetID/subfolder"
+    Url="AssetAttachments"
+    EnableAttachments="FALSE" />
+
+</Elements>

@@ -1,0 +1,32 @@
+declare const styles: {
+    root: string;
+    kpiRow: string;
+    kpiCard: string;
+    kpiIconWrap: string;
+    kpiValue: string;
+    kpiLabel: string;
+    panels: string;
+    panel: string;
+    panelHeader: string;
+    barRow: string;
+    barLabel: string;
+    barTrack: string;
+    barFill: string;
+    barCount: string;
+    statusGrid: string;
+    statusChip: string;
+    statusCount: string;
+    deptRow: string;
+    deptIcon: string;
+    deptName: string;
+    deptCount: string;
+    warrantyPanel: string;
+    warrantyPanelHeader: string;
+    warrantyTable: string;
+    warrantyRow: string;
+    assetLink: string;
+    daysBadge: string;
+    footer: string;
+};
+export default styles;
+//# sourceMappingURL=Dashboard.module.scss.d.ts.map

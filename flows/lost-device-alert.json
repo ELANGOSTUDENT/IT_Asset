@@ -1,0 +1,51 @@
+{
+  "_comment": "Power Automate Flow: Lost / Stolen Device Alert",
+  "_import_instructions": [
+    "1. Create a new Automated flow → 'When an HTTP request is received'",
+    "2. Paste the JSON schema into 'Request Body JSON Schema'",
+    "3. Copy the generated URL into the SPFx property pane under 'Lost / Stolen Device Alert'"
+  ],
+  "trigger": {
+    "type": "When an HTTP request is received",
+    "method": "POST",
+    "requestBodyJsonSchema": {
+      "type": "object",
+      "properties": {
+        "event":             { "type": "string" },
+        "assetId":           { "type": "string" },
+        "assetType":         { "type": "string" },
+        "model":             { "type": "string" },
+        "serialNumber":      { "type": "string" },
+        "lastAssignedTo":    { "type": "string" },
+        "lastAssignedEmail": { "type": "string" },
+        "department":        { "type": "string" },
+        "cost":              { "type": "number" },
+        "reportedBy":        { "type": "string" },
+        "timestamp":         { "type": "string" }
+      }
+    }
+  },
+  "actions": [
+    {
+      "type": "Send an email (V2)",
+      "to": "it-head@zoomrx.com; security@zoomrx.com",
+      "cc": "hr@zoomrx.com",
+      "subject": "🚨 URGENT: @{triggerBody()?['event']} — @{triggerBody()?['assetId']} (@{triggerBody()?['model']})",
+      "body": "<h2 style='color:red'>🚨 Device @{triggerBody()?['event']} Report</h2><table><tr><td><b>Asset ID</b></td><td>@{triggerBody()?['assetId']}</td></tr><tr><td><b>Model</b></td><td>@{triggerBody()?['model']}</td></tr><tr><td><b>Serial No.</b></td><td>@{triggerBody()?['serialNumber']}</td></tr><tr><td><b>Last Assigned To</b></td><td>@{triggerBody()?['lastAssignedTo']} (@{triggerBody()?['lastAssignedEmail']})</td></tr><tr><td><b>Department</b></td><td>@{triggerBody()?['department']}</td></tr><tr><td><b>Asset Value</b></td><td>₹@{triggerBody()?['cost']}</td></tr><tr><td><b>Reported By</b></td><td>@{triggerBody()?['reportedBy']}</td></tr><tr><td><b>Date/Time</b></td><td>@{triggerBody()?['timestamp']}</td></tr></table><p>Please initiate the appropriate security and HR procedures immediately.</p>",
+      "importance": "High"
+    },
+    {
+      "type": "Post adaptive card in a chat or channel (Teams)",
+      "team": "IT Department",
+      "channel": "Security Alerts",
+      "message": "🚨 **@{triggerBody()?['event']}** | Asset: @{triggerBody()?['assetId']} | Last user: @{triggerBody()?['lastAssignedTo']} | Reported by: @{triggerBody()?['reportedBy']}"
+    },
+    {
+      "_comment": "Optional: Create an incident ticket in ServiceNow / Jira Service Desk",
+      "type": "HTTP",
+      "method": "POST",
+      "uri": "YOUR_SERVICENOW_OR_JIRA_WEBHOOK_URL",
+      "disabled": true
+    }
+  ]
+}

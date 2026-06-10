@@ -1,0 +1,51 @@
+{
+  "_comment": "Power Automate Flow: Scrap / E-Waste Disposal Notification",
+  "_import_instructions": [
+    "1. Create a new Automated flow → 'When an HTTP request is received'",
+    "2. Paste the JSON schema into 'Request Body JSON Schema'",
+    "3. Copy the generated URL into the SPFx property pane under 'Scrap / E-Waste Disposal'"
+  ],
+  "trigger": {
+    "type": "When an HTTP request is received",
+    "method": "POST",
+    "requestBodyJsonSchema": {
+      "type": "object",
+      "properties": {
+        "event":        { "type": "string" },
+        "assetId":      { "type": "string" },
+        "assetType":    { "type": "string" },
+        "model":        { "type": "string" },
+        "vendor":       { "type": "string" },
+        "serialNumber": { "type": "string" },
+        "purchaseDate": { "type": "string" },
+        "cost":         { "type": "number" },
+        "department":   { "type": "string" },
+        "disposedBy":   { "type": "string" },
+        "timestamp":    { "type": "string" }
+      }
+    }
+  },
+  "actions": [
+    {
+      "type": "Send an email (V2)",
+      "to": "it@zoomrx.com; finance@zoomrx.com",
+      "subject": "♻️ E-Waste Disposal: @{triggerBody()?['assetId']} — @{triggerBody()?['event']}",
+      "body": "<h2>IT Asset Disposal Record</h2><p>An asset has been marked for <strong>@{triggerBody()?['event']}</strong>.</p><table><tr><td><b>Asset ID</b></td><td>@{triggerBody()?['assetId']}</td></tr><tr><td><b>Type</b></td><td>@{triggerBody()?['assetType']}</td></tr><tr><td><b>Model</b></td><td>@{triggerBody()?['model']}</td></tr><tr><td><b>Vendor</b></td><td>@{triggerBody()?['vendor']}</td></tr><tr><td><b>Serial No.</b></td><td>@{triggerBody()?['serialNumber']}</td></tr><tr><td><b>Purchase Date</b></td><td>@{triggerBody()?['purchaseDate']}</td></tr><tr><td><b>Original Cost</b></td><td>₹@{triggerBody()?['cost']}</td></tr><tr><td><b>Department</b></td><td>@{triggerBody()?['department']}</td></tr><tr><td><b>Disposed By</b></td><td>@{triggerBody()?['disposedBy']}</td></tr><tr><td><b>Disposal Date</b></td><td>@{triggerBody()?['timestamp']}</td></tr></table><p>Please ensure proper e-waste disposal documentation is completed per WEEE/local regulations. Vendor certificate of destruction must be filed within 30 days.</p>",
+      "importance": "Normal"
+    },
+    {
+      "type": "Create item",
+      "_comment": "Optional: log to a dedicated E-Waste register list in SharePoint",
+      "site": "https://YOUR_TENANT.sharepoint.com/sites/IT",
+      "list": "EWaste_Register",
+      "fields": {
+        "Title":        "@{triggerBody()?['assetId']}",
+        "Model":        "@{triggerBody()?['model']}",
+        "SerialNumber": "@{triggerBody()?['serialNumber']}",
+        "DisposedBy":   "@{triggerBody()?['disposedBy']}",
+        "DisposalDate": "@{triggerBody()?['timestamp']}",
+        "DisposalType": "@{triggerBody()?['event']}"
+      }
+    }
+  ]
+}

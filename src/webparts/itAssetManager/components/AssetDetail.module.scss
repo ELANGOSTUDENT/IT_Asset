@@ -1,0 +1,285 @@
+@import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
+
+$shadow-card:       0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.1);
+$shadow-card-hover: 0 3.2px 7.2px rgba(0,0,0,.13), 0 0.6px 1.8px rgba(0,0,0,.1);
+$radius: 6px;
+$transition: 0.15s ease;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  background: $ms-color-neutralLighterAlt;
+  min-height: 600px;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  background: #fff;
+  border-bottom: 1px solid $ms-color-neutralLight;
+  box-shadow: $shadow-card;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.headerCenter {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.assetId {
+  font-family: 'Courier New', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: $ms-color-neutralPrimary;
+  white-space: nowrap;
+  background: $ms-color-neutralLighterAlt;
+  border: 1px solid $ms-color-neutralLight;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+// ── Body ──────────────────────────────────────────────────────────────────────
+.body {
+  display: flex;
+  gap: 20px;
+  padding: 20px 24px;
+  align-items: flex-start;
+
+  @media (max-width: 960px) {
+    flex-direction: column;
+  }
+}
+
+// ── Left panel ────────────────────────────────────────────────────────────────
+.details {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+// ── Right panel ───────────────────────────────────────────────────────────────
+.rightPanel {
+  flex: 1;
+  min-width: 280px;
+  max-width: 340px;
+  align-self: flex-start;
+  position: sticky;
+  top: 70px;       // offset for sticky header
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  @media (max-width: 960px) {
+    max-width: 100%;
+    position: static;
+  }
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────────────
+.card {
+  background: #fff;
+  border: 1px solid $ms-color-neutralLight;
+  border-radius: $radius;
+  padding: 14px 18px;
+  box-shadow: $shadow-card;
+  transition: box-shadow $transition;
+  border-left: 3px solid $ms-color-themePrimary;
+
+  &:hover {
+    box-shadow: $shadow-card-hover;
+  }
+}
+
+.cardTitle {
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $ms-color-neutralSecondary;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid $ms-color-neutralLighter;
+
+  // Icon inside title
+  svg {
+    color: $ms-color-themePrimary;
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// ── Fields grid ───────────────────────────────────────────────────────────────
+.fieldGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 16px 10px 0;
+  min-width: 150px;
+  flex: 1 1 150px;
+}
+
+.fieldLabel {
+  font-size: 10px;
+  color: $ms-color-neutralTertiary;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 3px;
+  font-weight: 600;
+}
+
+.fieldValue {
+  font-size: 13px;
+  color: $ms-color-neutralPrimary;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.remarks {
+  font-size: 13px;
+  color: $ms-color-neutralPrimary;
+  white-space: pre-wrap;
+  margin: 0;
+  line-height: 1.5;
+}
+
+// ── Attachment link ───────────────────────────────────────────────────────────
+.attachLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: $ms-color-themePrimary;
+  text-decoration: none;
+  margin-top: 10px;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid $ms-color-themeLight;
+  border-radius: 4px;
+  background: $ms-color-themeLighterAlt;
+  transition: background $transition;
+  font-weight: 500;
+
+  &:hover {
+    background: $ms-color-themeLighter;
+    text-decoration: none;
+  }
+
+  svg { width: 14px; height: 14px; }
+}
+
+// ── Repair entries ────────────────────────────────────────────────────────────
+.repairEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+}
+
+.repairHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+// ── History timeline ──────────────────────────────────────────────────────────
+.timeline {
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  overflow-y: auto;
+
+  // Subtle scrollbar
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: $ms-color-neutralLighter; }
+  &::-webkit-scrollbar-thumb { background: $ms-color-neutralTertiaryAlt; border-radius: 2px; }
+}
+
+.timelineItem {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 16px;
+  position: relative;
+
+  &:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 30px;
+    bottom: 0;
+    width: 2px;
+    background: $ms-color-neutralLight;
+  }
+}
+
+.timelineDot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: $ms-color-themeLighterAlt;
+  border: 2px solid $ms-color-themePrimary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: $ms-color-themePrimary;
+  box-shadow: 0 0 0 3px rgba(0,120,212,.08);
+}
+
+.timelineContent {
+  flex: 1;
+  padding-top: 5px;
+}
+
+.timelineAction {
+  font-size: 13px;
+  color: $ms-color-neutralPrimary;
+  margin-bottom: 3px;
+  line-height: 1.3;
+}
+
+.timelineMeta {
+  font-size: 11px;
+  color: $ms-color-neutralSecondary;
+  margin-bottom: 4px;
+}
+
+.timelineNote {
+  font-size: 12px;
+  color: $ms-color-neutralTertiary;
+  background: $ms-color-neutralLighterAlt;
+  border-left: 2px solid $ms-color-neutralLight;
+  padding: 4px 10px;
+  border-radius: 0 3px 3px 0;
+  font-style: italic;
+  line-height: 1.4;
+}

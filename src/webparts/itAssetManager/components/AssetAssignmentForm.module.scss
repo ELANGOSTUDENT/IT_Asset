@@ -1,0 +1,150 @@
+@import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
+
+$shadow-card: 0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.1);
+$radius: 6px;
+$transition: 0.15s ease;
+
+// ── Root ──────────────────────────────────────────────────────────────────────
+.root {
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+  background: $ms-color-neutralLighterAlt;
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid $ms-color-neutralLight;
+  background: #fff;
+  box-shadow: $shadow-card;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.assetMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: $ms-color-neutralSecondary;
+  flex-wrap: wrap;
+}
+
+.assetIdChip {
+  font-family: 'Courier New', monospace;
+  background: $ms-color-themeLighterAlt;
+  color: $ms-color-themePrimary;
+  border: 1px solid $ms-color-themeLight;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+// ── Scrollable form body ──────────────────────────────────────────────────────
+.form {
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+// ── Read-only asset reference card ────────────────────────────────────────────
+.assetRefCard {
+  background: $ms-color-themeLighterAlt;
+  border: 1px solid $ms-color-themeLight;
+  border-radius: $radius;
+  border-left: 4px solid $ms-color-themePrimary;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  box-shadow: $shadow-card;
+}
+
+.refRow {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.refLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: $ms-color-neutralTertiary;
+  font-weight: 600;
+}
+
+.refValue {
+  font-size: 13px;
+  color: $ms-color-neutralPrimary;
+  font-weight: 500;
+}
+
+// ── Section card ──────────────────────────────────────────────────────────────
+.section {
+  background: #fff;
+  border: 1px solid $ms-color-neutralLight;
+  border-radius: $radius;
+  border-left: 4px solid $ms-color-themePrimary;
+  padding: 16px 20px 18px;
+  box-shadow: $shadow-card;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 11px;
+  color: $ms-color-neutralSecondary;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid $ms-color-neutralLighter;
+
+  svg {
+    color: $ms-color-themePrimary;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+}
+
+// ── Input grid ────────────────────────────────────────────────────────────────
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid $ms-color-neutralLight;
+  background: #fff;
+  box-shadow: 0 -1.6px 3.6px rgba(0,0,0,.10);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}

@@ -1,0 +1,156 @@
+@import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
+
+$shadow-card: 0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.1);
+$radius: 6px;
+
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+// ── Command bar sits on white with subtle bottom border ───────────────────────
+:global(.ms-CommandBar) {
+  background: #fff;
+  border-bottom: 1px solid $ms-color-neutralLight;
+  padding: 0 8px;
+  box-shadow: $shadow-card;
+}
+
+// ── Filter bar ────────────────────────────────────────────────────────────────
+.filters {
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid $ms-color-neutralLight;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.searchBox {
+  width: 280px;
+
+  // Slightly taller than default
+  :global(.ms-SearchBox) {
+    height: 34px;
+    border-radius: 4px;
+  }
+}
+
+.filterDrop {
+  width: 170px;
+
+  :global(.ms-Dropdown-title) {
+    border-radius: 4px;
+    height: 34px;
+    line-height: 32px;
+    font-size: 13px;
+  }
+}
+
+// ── Result count strip ────────────────────────────────────────────────────────
+.resultCount {
+  padding: 6px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: $ms-color-neutralSecondary;
+  font-size: 12px;
+  background: $ms-color-neutralLighterAlt;
+  border-bottom: 1px solid $ms-color-neutralLighter;
+}
+
+// ── DetailsList overrides ─────────────────────────────────────────────────────
+.list {
+  padding: 0;
+  background: #fff;
+
+  // Row hover
+  :global(.ms-DetailsRow) {
+    border-bottom: 1px solid $ms-color-neutralLighter;
+    transition: background 0.1s ease;
+
+    &:hover {
+      background: $ms-color-neutralLighterAlt !important;
+    }
+  }
+
+  // Make column headers slightly more prominent
+  :global(.ms-DetailsHeader) {
+    padding-top: 0;
+  }
+
+  :global(.ms-DetailsHeader-cell) {
+    background: $ms-color-neutralLighterAlt;
+    border-bottom: 2px solid $ms-color-neutralLight;
+    font-size: 12px;
+    font-weight: 600;
+    color: $ms-color-neutralSecondary;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  :global(.ms-DetailsRow-cell) {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+  }
+}
+
+// ── Asset ID link ─────────────────────────────────────────────────────────────
+.assetId {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: $ms-color-themePrimary;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: background 0.1s ease;
+
+  &:hover {
+    background: $ms-color-themeLighterAlt;
+    text-decoration: underline;
+  }
+}
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+.statusBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+// ── Row action buttons ────────────────────────────────────────────────────────
+.rowActions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  opacity: 0.3;
+  transition: opacity 0.1s ease;
+
+  :global(.ms-DetailsRow):hover & {
+    opacity: 1;
+  }
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+.empty {
+  padding: 60px 0;
+  color: $ms-color-neutralSecondary;
+  text-align: center;
+  background: #fff;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  color: $ms-color-neutralTertiaryAlt;
+  margin-bottom: 12px;
+  display: block;
+}

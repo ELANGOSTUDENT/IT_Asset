@@ -1,0 +1,46 @@
+{
+  "_comment": "Power Automate Flow: Asset Assignment Notification",
+  "_import_instructions": [
+    "1. Open Power Automate → My flows → Import",
+    "2. Or create a new Automated flow → 'When an HTTP request is received'",
+    "3. Paste the JSON schema below into the 'Request Body JSON Schema' field",
+    "4. Copy the generated HTTP POST URL and paste it into the SPFx web part property pane under 'Asset Assignment Notification'"
+  ],
+  "trigger": {
+    "type": "When an HTTP request is received",
+    "method": "POST",
+    "requestBodyJsonSchema": {
+      "type": "object",
+      "properties": {
+        "event":           { "type": "string" },
+        "assetId":         { "type": "string" },
+        "assetType":       { "type": "string" },
+        "model":           { "type": "string" },
+        "serialNumber":    { "type": "string" },
+        "assignedTo":      { "type": "string" },
+        "assignedToEmail": { "type": "string" },
+        "department":      { "type": "string" },
+        "location":        { "type": "string" },
+        "triggeredBy":     { "type": "string" },
+        "timestamp":       { "type": "string" },
+        "source":          { "type": "string" }
+      }
+    }
+  },
+  "actions": [
+    {
+      "type": "Send an email (V2)",
+      "to": "@{triggerBody()?['assignedToEmail']}",
+      "cc": "it@zoomrx.com",
+      "subject": "IT Asset Assigned: @{triggerBody()?['assetId']} — @{triggerBody()?['model']}",
+      "body": "<h2>IT Asset Assigned to You</h2><table><tr><td><b>Asset ID</b></td><td>@{triggerBody()?['assetId']}</td></tr><tr><td><b>Type</b></td><td>@{triggerBody()?['assetType']}</td></tr><tr><td><b>Model</b></td><td>@{triggerBody()?['model']}</td></tr><tr><td><b>Serial No.</b></td><td>@{triggerBody()?['serialNumber']}</td></tr><tr><td><b>Department</b></td><td>@{triggerBody()?['department']}</td></tr><tr><td><b>Location</b></td><td>@{triggerBody()?['location']}</td></tr><tr><td><b>Assigned by</b></td><td>@{triggerBody()?['triggeredBy']}</td></tr></table><p>Please acknowledge receipt by replying to this email or contacting IT helpdesk.</p>",
+      "importance": "Normal"
+    },
+    {
+      "type": "Post message in a chat or channel (Teams)",
+      "team": "IT Department",
+      "channel": "Asset Assignments",
+      "message": "✅ **Asset Assigned** | @{triggerBody()?['assetId']} (@{triggerBody()?['model']}) assigned to **@{triggerBody()?['assignedTo']}** ([@{triggerBody()?['department']}])"
+    }
+  ]
+}
