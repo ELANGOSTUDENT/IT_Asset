@@ -11,5 +11,7 @@ export declare class AssetAssignmentService {
     addAssignment(assignment: Omit<IAssetAssignment, 'Id'>): Promise<IAssetAssignment>;
     updateAssignment(id: number, changes: Partial<IAssetAssignment>): Promise<void>;
     private deactivateExisting;
+    /** Sync assignment fields to the IT_Assets list item so detail view is up to date. */
+    private _syncITAssets;
 }
 //# sourceMappingURL=AssetAssignmentService.d.ts.map
