@@ -11,7 +11,7 @@ const SELECT = [
   'Id', 'Title', 'AssetItemId', 'SerialNumber',
   'AssignedTo', 'AssignedToEmail', 'Department', 'AssetLocation',
   'DateOfAssignment', 'LastMaintenanceDate', 'NextMaintenanceDate',
-  'MaintenanceNotes', 'AssignmentRemarks', 'IsActive',
+   'MaintenanceNotes', 'Remarks', 'IsActive',
 ];
 
 export class AssetAssignmentService {

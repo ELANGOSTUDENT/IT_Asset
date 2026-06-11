@@ -4,11 +4,13 @@ import { IAssetAssignment } from '../models/IAssetAssignment';
 import { AssetService } from '../services/AssetService';
 import { AssetRepairService } from '../services/AssetRepairService';
 import { AssetAssignmentService } from '../services/AssetAssignmentService';
+import { FileUploadService } from '../services/FileUploadService';
 interface IAssetDetailProps {
     asset: IAsset;
     assetService: AssetService;
     repairService: AssetRepairService;
     assignmentService: AssetAssignmentService;
+    fileService: FileUploadService;
     currentUser: string;
     onBack: () => void;
     onEdit: () => void;

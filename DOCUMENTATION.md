@@ -743,3 +743,375 @@ After saving a new asset, a dialog asks "Assign now?" → Yes opens AssetAssignm
 ---
 
 *When a new feature is added or an existing feature is changed, update the relevant section(s) above and add a row to the Change Log table at the bottom.*
+# IT Asset Lifecycle Manager — Technical Documentation
+
+This document provides a comprehensive technical overview of the internal IT Asset Lifecycle Manager, a SharePoint Framework (SPFx) web part developed for **ZoomRx Chennai Office** (M365 E3 tenant, serving ~500 employees).
+
+---
+
+## 1. Project Overview
+
+The **IT Asset Lifecycle Manager** is a single-page SPFx application that allows IT administrators and asset managers to track the entire lifecycle of hardware and network devices—from procurement, stocking, and active employee assignment, to repair, transfer, and eventual scrapping or disposal.
+
+### Core Key Metrics & Targets:
+* **Tenant Type:** Microsoft 365 E3 (no premium Power Platform licenses required).
+* **Location Focus:** Chennai Office, India (Default Country Code: `IN`, Default Office Code: `CHN`).
+* **UAT Site Site Relative Path:** `/sites/IT-Tech`
+* **UAT Pages:** `IT-Asset-UAT.aspx`
+* **Data Sources:** SharePoint Online Lists (`IT_Assets` and `Asset_History`).
+
+---
+
+## 2. Technical Architecture
+
+The application is built entirely on the Microsoft 365 SaaS ecosystem with no external database requirements.
+
+```
+┌────────────────────────────────────────────────────────┐
+│               SPFx React Web Part UI                   │
+│  (Fluent UI v8, React 17, PnP.js v3, AssetIdGenerator) │
+└───────────┬─────────────────────────────────┬──────────┘
+            │                                 │
+            ▼ (SP REST APIs via PnP.js)       ▼ (REST Webhook Calls)
+┌─────────────────────────────────────┐  ┌─────────────────────────────────┐
+│        SharePoint Online            │  │      Power Automate Flows       │
+│  ├─ IT_Assets List (Primary Data + Current Assignment Snapshot) │
+│  ├─ Asset_Assignments List (Assignment History)                 │
+│  ├─ Asset_Repairs List (Repair History)                         │
+│  └─ Asset_History List (Audit Log)                              │  │  ├─ Lost / Stolen Device Alert   │
+└─────────────────────────────────────┘  │  ├─ Warranty Expiry Batch Run   │
+                                         │  └─ Scrap / E-Waste Alert       │
+                                         └─────────────────────────────────┘
+```
+
+### Frontend Stack:
+* **SPFx Version:** 1.18.2
+* **Build Engine:** Gulp & Webpack (via SPFx build pipeline)
+* **Framework:** React v17.0.1 (functional components with Hooks)
+* **UI Controls:** Fluent UI v8 (formerly Office UI Fabric)
+* **Styling:** CSS Modules with Sass (`.module.scss`) and modern theme integration.
+* **SharePoint Broker:** `@pnp/sp` v3 (PnPjs) utilizing standard SharePoint REST APIs (fully compliant with standard M365 E3 licenses).
+
+---
+
+## 3. Folder & Directory Structure
+
+```
+it-asset-tool/
+├── config/                      # SPFx configuration
+│   ├── config.json              # Webpack bundling configuration
+│   ├── package-solution.json    # SPFx deployment and list provisioning manifest
+│   └── serve.json               # Local development server and workbench settings
+├── flows/                       # Power Automate JSON templates
+│   ├── assignment-notification.json
+│   ├── lost-device-alert.json
+│   ├── warranty-expiry-check.json
+│   └── scrap-ewaste-notification.json
+├── sharepoint/assets/           # SharePoint declarative XML provisioning definitions
+│   ├── elements.xml             # Field types and choice lists definitions
+│   └── schema.xml               # Structure and views for lists + AssetAttachments doc library
+├── src/webparts/itAssetManager/ # Source files
+│   ├── ItAssetManagerWebPart.ts # Web part controller entry point & property pane fields
+│   ├── ItAssetManagerWebPart.manifest.json # Component registration
+│   ├── components/              # UI Components
+│   │   ├── ItAssetManager.tsx   # Orchestrator & View Switcher (Router)
+│   │   ├── Dashboard.tsx        # High-level KPIs, charts, and warranty tables
+│   │   ├── AssetTable.tsx       # Interactive search & filter data grid
+│   │   ├── AssetForm.tsx        # Form validation and dynamic Asset ID generation
+│   │   ├── AssetDetail.tsx      # Detail inspector and status transition triggers
+│   │   ├── AssetAssignmentForm.tsx # Assignment create/edit form (dialog)
+│   │   └── AssetRepairForm.tsx   # Repair log form (dialog) with type-conditional fields
+│   ├── models/                  # Core Types & Domains
+│   │   ├── IAsset.ts            # Asset interfaces, allowed status paths, colors
+│   │   ├── IAssetHistory.ts     # Audit log schema
+│   │   ├── IAssetAssignment.ts  # Assignment history schema
+│   │   └── IAssetRepair.ts      # Repair history schema
+│   ├── services/                # Backend API Bridges
+│   │   ├── AssetService.ts      # SharePoint PnPjs CRUD & Dashboard computation
+│   │   ├── AssetAssignmentService.ts # Asset_Assignments CRUD for assignment history
+│   │   ├── AssetRepairService.ts # Asset_Repairs CRUD for repair history
+│   │   ├── FileUploadService.ts # AssetAttachments document library uploads
+│   │   └── PowerAutomateService.ts # HTTP Webhook dispatch broker
+│   └── utils/                   # Shared helpers
+│       └── AssetIdGenerator.ts  # Regex parser and sequence-based generator
+├── package.json                 # Dependency manifest
+└── tsconfig.json                # TypeScript compilation parameters
+```
+
+---
+
+## 4. React Component Architecture
+
+The web part operates as a single-page app (SPA) routed dynamically by `ItAssetManager.tsx`.
+
+### `ItAssetManager.tsx` (App Orchestrator)
+* **Role:** Manages global state including:
+  - Current view (`dashboard`, `list`, `add`, `edit`, `detail`).
+  - Core asset collection state (`assets`).
+  - Currently inspected asset (`selected`).
+  - Loading, error, and success banner states.
+* **Process Flow:** Initializes `AssetService` and `PowerAutomateService`. Triggers background data loads on mounting. Hooks up state update callbacks for child components. Handles status transition events, dispatches REST API update calls to SharePoint, and triggers relevant Power Automate webhooks concurrently.
+
+### `Dashboard.tsx` (Insights & KPI Center)
+* **Role:** Summarizes the current system inventory into digestible dashboard widgets.
+* **Features:**
+  - KPI Cards (Total Assets, Active, Stock, Repair, Procured, Warranty Soon, Lost/Stolen).
+  - Horizontal bar distribution chart for Asset Types.
+  - Choice-colored badge grid representing Statuses.
+  - Scrollable grid listing the upcoming 90-day active warranties.
+
+### `AssetTable.tsx` (Data Directory)
+* **Role:** Grid view for filtering and locating assets.
+* **Features:**
+  - Standard keyword text search across Asset ID (Title), Serial Number, Model, and Assignee.
+  - Dropdown filters for Status and Asset Type.
+  - Row click trigger to view full details.
+
+### `AssetForm.tsx` (Add & Edit Form)
+* **Role:** Intuitive asset intake and editing.
+* **Features:**
+  - Automated ID Generator preview displaying what the future unique Asset ID will look like based on selected type and country/office properties.
+  - Choice selectors for Asset Types and Statuses.
+  - People Picker lookup (using SharePoint Site Users) for tracking assignees.
+  - Validation rules enforcing required fields.
+
+### `AssetDetail.tsx` (Timeline & Action Desk)
+* **Role:** Thorough asset inspector with deep status modification capability.
+* **Features:**
+  - Detailed metadata grids showing PO, Costs, and current ownership.
+  - Sequential chronological audit timeline fetched in real-time from `Asset_History`.
+  - Dynamic Assignment card loading current assignment from `Asset_Assignments` via `AssetAssignmentService`.
+  - "Assign Now" / "Edit Assignment" buttons that open the `AssetAssignmentForm` dialog.
+  - Assignment save triggers deactivation of old records, creation of new ones, and snapshot sync to `IT_Assets`.
+  - Repair History card listing all repairs (newest first) with type-conditional fields.
+  - "Log Repair" button opens `AssetRepairForm` dialog with conditional fields per repair type.
+  - Repair attachments stored in `AssetAttachments/{AssetID}/repairs/` via `FileUploadService`.
+  - Contextual status transition actions (e.g., "Repair Completed", "Report Lost/Stolen", "Scrap Asset") reflecting current allowed paths.
+
+---
+
+## 5. SharePoint Lists & Integration Schema
+
+The solution leverages SharePoint site features to declaratively provision lists during package installation.
+
+### 1. `IT_Assets` (Primary Table)
+Tracks the current state of each physical or virtual IT Asset.
+* **Title:** Repurposed as the unique Asset ID (e.g., `IN-CHN-26-LAP-0001`).
+* **SerialNumber:** Required text field.
+* **Model / Vendor:** Required metadata.
+* **PONumber / InvoiceNumber:** Audit reference numbers.
+* **Cost:** Numeric field tracking original purchase price in INR.
+* **PurchaseDate:** DateTime field (Date only) indicating asset inception.
+* **WarrantyExpiry:** DateTime field (Date only) indicating hardware warranty expiry.
+* **AssignedTo / AssignedToEmail:** Text attributes capturing assignee.
+* **Department / AssetLocation:** Segment attributes.
+* **Country / OfficeCode:** Defaults to `IN` / `CHN`.
+* **Status:** Choice field mapping to Asset Lifecycle (includes `Validation`).
+* **AssetType:** Choice field (LAP, MAC, DTP, MON, DOC, MOB, NET, ACC).
+* **Remarks:** Multi-line text for generic comments.
+* **SequenceNumber\_New:** Integer sequence identifier for generating sequential Asset IDs.
+* **ReceivedDate / ReceivedBy:** Date and person who received the asset.
+* **ValidationStatus:** Choice field (Pending, Validated, Rejected).
+* **PhysicalCondition:** Choice field (New, Good, Damaged).
+* **ValidationComments:** Multi-line notes from the receiving/validation process.
+* **ValidationDate / ValidatedBy:** Date and person who completed validation.
+
+### 2. `Asset_History` (Audit Log Table)
+An immutable ledger tracking every modification state.
+* **Title:** Foreign key matching the parent Asset ID.
+* **Action:** Type of action (`Created`, `StatusChanged`, etc.).
+* **PreviousStatus / NewStatus:** State snapshot indicators.
+* **ChangedBy / ChangedByEmail:** Operator metadata.
+* **ChangedDate:** ISO timestamp when the change occurred.
+* **HistoryNotes:** Operator notes documenting the reason behind state changes.
+
+### 3. `Asset_Assignments` (Assignment History)
+Tracks the full history of asset assignments — who was assigned, when, and to which department/location.
+* **Title:** Foreign key matching the parent Asset ID (e.g., `IN-CHN-26-LAP-0001`).
+* **AssetItemId:** Numeric ID of the parent IT_Assets item.
+* **SerialNumber:** Serial number snapshot at time of assignment.
+* **AssignedTo / AssignedToEmail:** Assignee details.
+* **Department / AssetLocation:** Assignment context.
+* **DateOfAssignment:** DateOnly field indicating when the asset was assigned.
+* **AssignmentRemarks:** Optional multi-line notes about the assignment.
+* **IsActive:** Boolean flag — only one assignment per asset is active at a time.
+* **Current Assignment Snapshot on IT_Assets:** The `AssignedTo`, `AssignedToEmail`, `Department`, `AssetLocation`, and `DateOfAssignment` fields on `IT_Assets` are kept in sync by `AssetAssignmentService` to reflect the current assignment without requiring a join query.
+
+### 4. `Asset_Repairs` (Repair History)
+Tracks every repair performed on an asset, supporting both warranty replacements and out-of-warranty repairs.
+* **Title:** Foreign key matching the parent Asset ID.
+* **AssetItemId:** Numeric ID of the parent IT_Assets item.
+* **SerialNumber:** Serial number snapshot at time of repair.
+* **RepairType:** Choice — `In Warranty Replacement` or `Out Of Warranty Repair`.
+* **RepairDate:** DateOnly field when the repair occurred.
+* **RepairVendor:** Service provider name.
+* **IssueDescription:** Multi-line description of the reported issue.
+* **RepairCost:** Currency field (INR) — shown only for out-of-warranty repairs.
+* **RepairInvoiceNumber:** Invoice reference — shown only for out-of-warranty repairs.
+* **WarrantyCaseNumber:** Case/RMA number — shown only for warranty replacements.
+* **ReplacementSerialNumber:** Serial number of the replacement device — shown only for warranty replacements.
+* **AttachmentUrl / AttachmentName:** Link to the repair attachment file stored in `AssetAttachments/{AssetID}/repairs/`.
+* **RepairRemarks:** Optional multi-line notes.
+* **CreatedBy / CreatedDate:** Operator metadata.
+
+### 5. `AssetAttachments` (Document Library)
+File attachment library organized by asset ID and category. No URL columns are stored in the asset record; files are discovered at runtime by querying the folder hierarchy.
+* **Folder structure:** `AssetAttachments/{AssetID}/{category}/`
+* **Categories:** `purchase`, `repairs`, `gifted`, `transfer`, `scrap`, `validation`, `photos`
+* **Managed by:** `FileUploadService.ts`
+* **Backward compatible:** Existing assets without document library entries continue to work.
+
+---
+
+## 6. Services & Integrations
+
+### `AssetService.ts`
+Uses PnPjs v3 to perform SharePoint data operations.
+* **Sequential Generation:** Dynamically queries the `IT_Assets` list using the `startswith` OData filter for the current Prefix (e.g., `IN-CHN-26-LAP-`) and returns the highest `SequenceNumber` to safely calculate the next serial increment without collisions.
+* **Dashboard Aggregation:** Performs analytical groupings on all asset rows to compute counts by Status, Type, and Department.
+* **Warranty Pipeline:** Pulls active assets expiring within the customized day window (default 90 days) for proactive IT alerts.
+* **Assignment Snapshot Sync:** `updateAssetAssignmentSnapshot()` updates `AssignedTo`, `AssignedToEmail`, `Department`, `AssetLocation`, and `DateOfAssignment` on `IT_Assets` to keep the current-assignment view in sync.
+
+### `AssetAssignmentService.ts`
+Manages assignment records in the `Asset_Assignments` SharePoint list and coordinates the dual-write pattern.
+* **Architecture:** Assignment data is dual-stored — full history in `Asset_Assignments`, current snapshot on `IT_Assets`.
+* **`getActiveAssignment(assetId)`:** Returns the single active assignment for an asset (`IsActive eq 1`), or null if none.
+* **`getAllAssignments(assetId)`:** Returns full assignment history (newest first) for an asset.
+* **`addAssignment(data)`:** Creates a new assignment record in `Asset_Assignments`.
+* **`deactivateExisting(assetId)`:** Sets `IsActive = false` on the currently active assignment before a new one is created.
+* **Save Workflow (in `ItAssetManager.tsx`):** 
+  1. Deactivate existing active assignment (`deactivateExisting`)
+  2. Create new assignment record (`addAssignment` with `IsActive: true`)
+  3. Update `IT_Assets` snapshot fields (`AssetService.updateAssetAssignmentSnapshot`)
+  4. Refresh the asset detail view
+
+### `AssetRepairService.ts`
+Manages repair records in the `Asset_Repairs` SharePoint list.
+* **`getRepairs(assetId)`:** Returns all repair records for an asset, newest first.
+* **`addRepair(data)`:** Creates a new repair record.
+* **`updateRepair(id, changes)`:** Updates an existing repair record.
+* **`deleteRepair(id)`:** Moves a repair record to the recycle bin.
+* **Attachment storage:** Repair attachments are stored in `AssetAttachments/{AssetID}/repairs/` via `FileUploadService` and the URL is stored on the repair record.
+
+### `FileUploadService.ts`
+Manages document attachments in the `AssetAttachments` document library.
+* **Folder-per-AssetID structure:** Automatically creates `AssetAttachments/{AssetID}/{category}/` folders and uploads files.
+* **Supported categories:** `purchase`, `repairs`, `gifted`, `transfer`, `scrap`, `validation`, `photos`.
+* **API:** `uploadFile(assetId, category, file)`, `getFiles(assetId, category)`, `deleteFile(assetId, category, fileName)`.
+* **Backward compatible:** All existing attachment operations continue to work. New categories extend the same folder structure without breaking existing uploads.
+
+### `PowerAutomateService.ts`
+An lightweight, standard webhook dispatch broker that fires async POST requests containing JSON schemas to configured flow endpoints when important milestones occur:
+1. **Asset Assigned:** Triggered when status shifts to `Active` with a designated assignee.
+2. **Device Lost/Stolen:** Triggered on state transitions to `Lost` or `Stolen` to flag high-priority security concerns.
+3. **Warranty Expiry Alert:** Dispatched on-demand via the Dashboard's manual trigger.
+4. **Scrap/E-Waste Dispatch:** Dispatched on transitioning to `Scrapped` or `Disposed`.
+
+---
+
+## 7. Asset Lifecycle & Workflow
+
+The web part strictly enforces the state machine below. Illegal state transitions are blocked programmatically.
+
+```
+Procured
+  └──> Validation
+        └──> Stock
+              ├──> Active
+              │     ├──> Repair ───> Active / Scrapped
+              │     ├──> Transferred ───> Active / Stock
+              │     ├──> Lost ───> Active (recovered)
+              │     ├──> Stolen ───> Active (recovered)
+              │     └──> Gifted (terminal)
+              └──> Scrapped ───> Disposed (terminal)
+```
+
+### Transition Requirements:
+* State transitions to `Lost`, `Stolen`, `Gifted`, `Transferred`, or `Disposed` strictly require the operator to input a explanatory reason (History Note).
+* When transitioning an asset to `Active`, the system requires assignee information to trigger assignment alerts.
+
+---
+
+## 8. Build, Package & Deployment Process
+
+Ensure Node.js 18.x and npm 9.x+ are installed.
+
+### Step 1: Install Dependencies
+```bash
+npm install
+```
+
+### Step 2: Build & Package Solution
+To build, bundle, and compile the package for SharePoint:
+```bash
+# Clean previous build artifacts
+npm run clean
+
+# Bundle client side resources in production mode (--ship)
+npm run bundle
+
+# Package solution into an sppkg installer file
+npm run package
+```
+* **Output Artifact:** `sharepoint/solution/it-asset-manager.sppkg`
+
+### Step 3: Deploy to SharePoint App Catalog
+1. Navigate to the SharePoint tenant app catalog at `https://<tenant>.sharepoint.com/sites/appcatalog`.
+2. Upload the `it-asset-manager.sppkg` package.
+3. Check the deployment checkbox and click **Deploy**. Ensure no errors are raised during the provisioning of the feature definitions (`IT_Assets` and `Asset_History` lists).
+
+### Step 4: Configure Web Part on Page
+1. Go to the UAT page: `https://<tenant>.sharepoint.com/sites/IT-Tech/SitePages/IT-Asset-UAT.aspx`.
+2. Edit the page, click the **+** icon, and search for **IT Asset Manager**.
+3. Select the web part and open the property pane (gear icon).
+4. Configure local Office codes (e.g. `IN` / `CHN`) and paste the four HTTP POST URLs copied from corresponding Power Automate flows into their respective fields.
+5. Save and publish the page.
+
+---
+
+## 9. Version Control & Release Management
+
+Strict version tracking across three distinct configurations is required prior to compiling any release:
+
+| File Location | Target Element | Purpose |
+|---------------|----------------|---------|
+| `package.json` | `version` | NPM Package Identity & Build Dependency Control |
+| `config/package-solution.json` | `solution.version` | SharePoint Solution Version (major.minor.build.revision) |
+| `config/package-solution.json` | `features[0].version` | List Feature Provisioning Version (incrementing triggers schema updates) |
+
+### Version Synchronization Checklist:
+Before running `npm run bundle --ship`, ensure that:
+1. `package.json` version is incremented (e.g., from `1.0.0` to `1.1.0`).
+2. `config/package-solution.json` matches the new version with 4 digits (e.g., `1.1.0.0`).
+3. If changes were made to list columns or schemas in `sharepoint/assets/elements.xml`, increment the feature version inside `package-solution.json` as well. This tells SharePoint to perform list upgrades upon re-deployment.
+4. Document the version bump inside `CHANGELOG.md`.
+
+### Release History
+
+| Version | Date | Summary |
+|---------|------|---------|
+| 1.0.0 | 2026-06-10 | Initial release — Dashboard, Asset Catalog, Intake Form, Audit Timeline, Power Automate integration |
+| 1.3.0 | 2026-06-10 | Asset Receiving & Validation workflow, `FileUploadService.ts`, `AssetAttachments` document library |
+| 1.4.0 | 2026-06-10 | Internal release management |
+| 1.5.0 | 2026-06-10 | Internal release management |
+| 1.6.0 | 2026-06-10 | Internal release management |
+| **1.7.0** | **2026-06-10** | **SequenceNumber field migration to `SequenceNumber_New` (Number type), restored list compatibility fixes** |
+| **1.8.0** | **2026-06-10** | **Asset Assignment module — `Asset_Assignments` list, `AssetAssignmentService`, `AssetAssignmentForm`, dynamic assignment card in AssetDetail, `DateOfAssignment` field on IT_Assets** |
+| **1.9.0** | **2026-06-10** | **Repair Management module — `Asset_Repairs` list, `AssetRepairService`, `AssetRepairForm` with type-conditional fields (In Warranty / Out Of Warranty), Repair History card in AssetDetail** |
+
+---
+
+## 10. Known Limitations & Future Opportunities
+
+### Known Limitations:
+* **SP List Threshold Limit:** The default queries query up to 5000 items (the OData top ceiling limit). For organizations scaling beyond 5000 assets, indexed columns and cursor-based pagination will need to be implemented within `AssetService.ts`.
+* **People Picker Cache:** The User Search API searches only within members who have accessed the current SharePoint site collection at least once (i.e. site directory records).
+* **Direct Webhook Deliverability:** The application relies on immediate HTTP fetches to Power Automate. If a flow endpoint is disabled, the alert request fails silently in the background (UI is unaffected but alert isn't sent).
+* **AssetAttachments Library Dependency:** File uploads for receiving documents require the `AssetAttachments` document library. If the library is not provisioned (e.g., during manual redeployment), uploads will fail silently.
+* **List Restore — Column Internal Name Mismatch:** If the `IT_Assets` list is deleted and recreated through the SharePoint UI (rather than redeploying the SPFx package), column internal names may differ from what the code expects (e.g., `SerialNumber` is expected, but the UI creates `Serial_x0020_Number`). After a restore, verify all column internal names against `elements.xml` and recreate mismatched columns with the correct internal names.
+
+### Future Opportunities:
+1. **Entra ID Graph Integration:** Implement `@microsoft/sp-http` MSGraphClient to lookup profiles directly from Azure AD, removing the site collection user limitation.
+2. **Bulk Upload Utility:** Add CSV parse routines inside `AssetForm.tsx` to intake dozens of procured assets simultaneously.
+3. **QR Code Generation:** Utilize a lightweight JS library (like `qrcode`) in `AssetDetail.tsx` to allow inventory managers to print scanner stickers directly.
+4. **Image Preview Gallery:** Replace photo file links with thumbnail previews in the Receiving & Validation card.

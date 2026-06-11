@@ -171,6 +171,73 @@ $transition: 0.15s ease;
   line-height: 1.5;
 }
 
+// ── Attachment section (list items within card) ──────────────────────────────
+.attachItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid $ms-color-neutralLighter;
+  gap: 8px;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.attachInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attachName {
+  font-size: 12px;
+  color: $ms-color-neutralPrimary;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachMeta {
+  font-size: 11px;
+  color: $ms-color-neutralSecondary;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: $ms-color-themeLighterAlt;
+  color: $ms-color-themePrimary;
+  border: 1px solid $ms-color-themeLight;
+}
+
+.attachActions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 20px 0;
+  color: $ms-color-neutralSecondary;
+  font-size: 12px;
+}
+
 // ── Attachment link ───────────────────────────────────────────────────────────
 .attachLink {
   display: inline-flex;

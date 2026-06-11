@@ -2,7 +2,7 @@ export declare type HistoryAction = 'Created' | 'StatusChanged' | 'Assigned' | '
 export interface IAssetHistory {
     Id?: number;
     Title: string;
-    Action: HistoryAction | string;
+    Action?: HistoryAction | string;
     PreviousStatus?: string;
     NewStatus?: string;
     ChangedBy: string;

@@ -253,8 +253,8 @@ const AssetAssignmentForm: React.FC<IAssetAssignmentFormProps> = ({
           <TextField
             multiline
             rows={2}
-            value={form.AssignmentRemarks || ''}
-            onChange={(_e, v) => set('AssignmentRemarks', v || '')}
+            value={form.Remarks || ''}
+            onChange={(_e, v) => set('Remarks', v || '')}
             placeholder="Any notes about this assignment…"
             maxLength={1000}
           />

@@ -10,7 +10,7 @@ export type HistoryAction =
 export interface IAssetHistory {
   Id?: number;
   Title: string;           // AssetId (e.g. IN-CHN-26-LAP-0001)
-  Action: HistoryAction | string;
+  Action?: HistoryAction | string;
   PreviousStatus?: string;
   NewStatus?: string;
   ChangedBy: string;

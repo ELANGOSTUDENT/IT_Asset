@@ -94,7 +94,8 @@ Located under `src/webparts/itAssetManager/components/`:
 * **`Dashboard.tsx`:** Renders KPI cards (Totals, Active, Stock, Repair, Procured, Expiry counts), distribution graphs, and lists the 90-day active warranties.
 * **`AssetTable.tsx`:** Displays the inventory list with search capability and drop-down filters for status and type.
 * **`AssetForm.tsx`:** Add/Edit form. Implements validation and previews sequential Asset IDs during creation.
-* **`AssetDetail.tsx`:** Shows full asset specification, sequential timeline of history fetched from `Asset_History`, dynamic assignment card loaded from `Asset_Assignments`, and triggers state transitions.
+* **`AssetDetail.tsx`:** Shows full asset specification, sequential timeline of history fetched from `Asset_History`, dynamic assignment card loaded from `Asset_Assignments`, attachment browser (`AssetAttachmentSection`), and triggers state transitions.
+* **`AssetAttachmentSection.tsx`:** Attachment management card rendered inside AssetDetail's right panel. Lists all files for the asset (sorted by TimeCreated DESC) with type-aware preview (browser/office/download), multi-file upload with category selection, and delete with recycle bin confirmation.
 * **`AssetAssignmentForm.tsx`:** Dialog for creating/editing asset assignments with Fluent UI controls and validation.
 * **`AssetRepairForm.tsx`:** Dialog for logging/editing repairs with type-conditional fields (In Warranty Replacement / Out Of Warranty Repair) and file attachment.
 
@@ -126,6 +127,10 @@ Located under `src/webparts/itAssetManager/services/`:
   - Manages file uploads to the `AssetAttachments` document library.
   - Organizes files in folders by asset ID and category (`purchase`, `repairs`, `gifted`, `transfer`, `scrap`, `validation`, `photos`).
   - Provides upload, list, and delete operations for attachment files.
+  - `listFiles(assetId)`: Queries the document library with `startswith(FileRef, path) and FSObjType eq 0` to enumerate all files for an asset (single API call, includes nested folders). Returns `IAttachment[]` sorted by `TimeCreated DESC`.
+  - `getFilesByCategory(assetId)`: Groups `listFiles()` result into a `Record<AttachmentCategory, IAttachment[]>`.
+  - `_inferCategory()`: Extracts category from file path via regex (`{assetId}/{category}/`), defaults to `other`.
+  - `_getPreviewType()`: Maps file extension to `browser` (PDF/images/text/CSV), `office` (DOCX/XLSX/PPTX), or `download` (ZIP/unsupported).
 * **`PowerAutomateService.ts`:**
   - Dispatches non-blocking async POST JSON payloads to standard HTTP hook receivers mapped in the web part property pane.
   - Events: `AssetAssigned`, `DeviceLost`, `DeviceStolen`, `WarrantyExpirySoon`, `AssetScrapped`, `AssetDisposed`.

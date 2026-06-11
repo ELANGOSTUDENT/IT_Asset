@@ -14,6 +14,13 @@ declare const styles: {
     fieldLabel: string;
     fieldValue: string;
     remarks: string;
+    attachItem: string;
+    attachInfo: string;
+    attachName: string;
+    attachMeta: string;
+    badge: string;
+    attachActions: string;
+    emptyState: string;
     attachLink: string;
     repairEntry: string;
     repairHeader: string;

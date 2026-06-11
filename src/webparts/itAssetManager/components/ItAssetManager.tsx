@@ -268,6 +268,7 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
           assetService={svc}
           repairService={repairSvc}
           assignmentService={assignSvc}
+          fileService={fileSvc}
           currentUser={props.userDisplayName}
           onBack={backToList}
           onEdit={() => openEdit(selected)}

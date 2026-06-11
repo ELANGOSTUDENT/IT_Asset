@@ -103,6 +103,16 @@ All changes to this project are documented here.
 
 ---
 
+## [v1.9.1] — 2026-06-11
+
+### Fixed
+- `AssetAssignmentService.ts` — Changed field reference from `AssignmentRemarks` to `Remarks` to match deployed Asset_Assignments list schema
+- `FileUploadService.ts` — Changed field reference from `TimeCreated` to `Created` for document library item queries
+- `AssetService.ts` — Removed invalid `Action` field from history item selects; made `Action` optional in `IAssetHistory` model with `'Updated'` fallback display
+- `IAssetAssignment.ts` — Renamed `AssignmentRemarks` to `Remarks` to match deployed list schema
+
+---
+
 ## Template — copy this block for every new change
 
 ```

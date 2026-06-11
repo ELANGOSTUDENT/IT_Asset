@@ -25,7 +25,9 @@ import { IRepairEntry } from '../models/IRepairEntry';
 import { AssetService } from '../services/AssetService';
 import { AssetRepairService } from '../services/AssetRepairService';
 import { AssetAssignmentService } from '../services/AssetAssignmentService';
+import { FileUploadService } from '../services/FileUploadService';
 import { AssetIdGenerator } from '../utils/AssetIdGenerator';
+import AssetAttachmentSection from './AssetAttachmentSection';
 import styles from './AssetDetail.module.scss';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -35,6 +37,7 @@ interface IAssetDetailProps {
   assetService: AssetService;
   repairService: AssetRepairService;
   assignmentService: AssetAssignmentService;
+  fileService: FileUploadService;
   currentUser: string;
   onBack: () => void;
   onEdit: () => void;
@@ -76,7 +79,7 @@ const Card: React.FC<{ title: string; icon: React.ReactNode; children: React.Rea
 // ── Main component ─────────────────────────────────────────────────────────────
 
 const AssetDetail: React.FC<IAssetDetailProps> = ({
-  asset, assetService, repairService, assignmentService,
+  asset, assetService, repairService, assignmentService, fileService,
   currentUser, onBack, onEdit, onEditAssignment, onStatusChange,
 }) => {
   const [history, setHistory]           = useState<IAssetHistory[]>([]);
@@ -136,7 +139,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
 
   const daysLeft = AssetIdGenerator.daysUntilWarrantyExpiry(asset.WarrantyExpiry);
 
-  const historyIcon = (action: string): string => {
+  const historyIcon = (action: string | undefined): string => {
     switch (action) {
       case 'Created':       return '＋';
       case 'StatusChanged': return '⇄';
@@ -381,6 +384,12 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
             </div>
           )}
 
+          {/* ── Attachments ── */}
+          <AssetAttachmentSection
+            assetId={asset.Title}
+            fileService={fileService}
+          />
+
           {/* ── Change History ── */}
           <div className={styles.card} style={{ marginTop: 16 }}>
             <div className={styles.cardTitle}><HistoryRegular /> Change History</div>
@@ -397,7 +406,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                       <div className={styles.timelineAction}>
                         {h.Action === 'StatusChanged'
                           ? <><strong>{h.PreviousStatus}</strong>{' → '}<strong>{h.NewStatus}</strong></>
-                          : <strong>{h.Action}</strong>
+                          : <strong>{h.Action || 'Updated'}</strong>
                         }
                       </div>
                       <div className={styles.timelineMeta}>

@@ -257,12 +257,16 @@
 ### 4.4. FileUploadService
 *   **File**: `services/FileUploadService.ts`
 *   **SP Dependencies**: `AssetAttachments` library.
-*   **Called By**: `AssetDetailsForm`.
+*   **Called By**: `AssetDetailsForm`, `AssetAttachmentSection`.
 *   **Methods**:
     *   `ensureFolder(assetId, sub)`: Creates `[AssetID]/[Category]` folder structure if it does not exist.
     *   `upload(assetId, sub, file)`: Uploads a file to the appropriate folder, returns server-relative URL and filename.
     *   `deleteFile(serverRelativeUrl)`: Sends a file to the recycle bin.
     *   `getAbsoluteUrl(serverRelativeUrl)`: Converts a server-relative URL to an absolute URL.
+    *   `listFiles(assetId)`: Queries document library with `startswith(FileRef, path) and FSObjType eq 0`, returns `IAttachment[]` sorted by `TimeCreated DESC`. Single API call — includes nested folders.
+    *   `getFilesByCategory(assetId)`: Groups `listFiles()` result by category as a `Record<AttachmentCategory, IAttachment[]>`.
+    *   `_inferCategory(path, assetId)`: Extracts folder category from path via regex, defaults to `other`.
+    *   `_getPreviewType(fileName)`: Maps extension to `browser` (pdf/png/jpg/jpeg/gif/svg/webp/bmp/tiff/txt/csv), `office` (doc/docx/xls/xlsx/ppt/pptx), or `download` (zip/rar/other).
 
 ### 4.5. PowerAutomateService
 *   **File**: `services/PowerAutomateService.ts`
@@ -335,6 +339,11 @@
 *   **Helper**: `IRepairEntryDraft` — form-friendly subset (no Id/Title/AttachmentUrl/AttachmentName).
 *   **Helper**: `emptyRepairDraft()` returns a blank draft.
 
+### 6.5. IAttachment (`models/IAttachment.ts`)
+*   **Purpose**: Attachment model for files in the `AssetAttachments` document library.
+*   **Fields**: `name`, `serverRelativeUrl`, `absoluteUrl`, `downloadUrl`, `category` (AttachmentCategory), `timeCreated`, `fileSize`, `previewType` (`browser` / `office` / `download`).
+*   **AttachmentCategory**: `purchase | repairs | gifted | transfer | scrap | validation | photos | other`. Inferred from folder path.
+
 ---
 
 ## 7. File Inventory
@@ -346,6 +355,7 @@
 | `components/Dashboard.tsx` | KPI dashboard with warranty alerts | `AssetService`, `IAsset` |
 | `components/AssetTable.tsx` | Filterable data grid with CSV export | `IAsset`, `AssetIdGenerator` |
 | `components/AssetDetail.tsx` | 360-degree asset view | All Services, All Models |
+| `components/AssetAttachmentSection.tsx` | Attachment management in detail view | `FileUploadService`, `IAttachment` |
 | `components/AssetDetailsForm.tsx` | Asset create/edit form | `AssetService`, `FileUploadService`, `AssetRepairService` |
 | `components/AssetAssignmentForm.tsx` | Assignment form | `AssetAssignmentService` |
 | `components/AssetForm.tsx` | Legacy asset form (deprecated) | `AssetService`, `AssetIdGenerator` |
@@ -359,6 +369,7 @@
 | `models/IAssetAssignment.ts` | Interface for user tracking | - |
 | `models/IAssetHistory.ts` | Interface for audit trail | - |
 | `models/IRepairEntry.ts` | Interface for repair logs | - |
+| `models/IAttachment.ts` | Interface for document library files | - |
 
 ---
 

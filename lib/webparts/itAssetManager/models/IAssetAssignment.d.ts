@@ -11,7 +11,7 @@ export interface IAssetAssignment {
     LastMaintenanceDate?: string;
     NextMaintenanceDate?: string;
     MaintenanceNotes?: string;
-    AssignmentRemarks?: string;
+    Remarks?: string;
     IsActive: boolean;
 }
 export declare const emptyAssignment: (assetId: string, assetItemId: number, serialNumber: string) => IAssetAssignment;

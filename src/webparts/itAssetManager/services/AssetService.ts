@@ -140,7 +140,7 @@ export class AssetService {
     return this._sp.web.lists
       .getByTitle(HISTORY_LIST)
       .items.filter(`Title eq '${assetId}'`)
-      .select('Id', 'Title', 'Action', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangedByEmail', 'ChangedDate', 'HistoryNotes')
+      .select('Id', 'Title', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangedByEmail', 'ChangedDate', 'HistoryNotes')
       .orderBy('ChangedDate', false)
       .top(200)();
   }
@@ -204,7 +204,7 @@ export class AssetService {
 
   async getRecentHistory(limit: number = 10): Promise<IAssetHistory[]> {
     return this._sp.web.lists.getByTitle(HISTORY_LIST)
-      .items.select('Id', 'Title', 'Action', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangedDate', 'HistoryNotes')
+      .items.select('Id', 'Title', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangedDate', 'HistoryNotes')
       .orderBy('ChangedDate', false)
       .top(limit)();
   }
