@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# SPFx Build Output
+lib/
+dist/
+temp/
+.release/
+
+# SharePoint Package Debug Files
+sharepoint/solution/debug/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment Files
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/settings.json
+
+# JetBrains
+.idea/
+
+# Coverage
+coverage/
+
+# Cache
+.cache/
+
+# Local test files
+*.tmp
+*.bak
