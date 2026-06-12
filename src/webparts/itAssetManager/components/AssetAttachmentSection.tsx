@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Spinner, SpinnerSize,
   DefaultButton, PrimaryButton, IconButton,
@@ -9,93 +9,161 @@ import {
 } from '@fluentui/react';
 import { FileUploadService } from '../services/FileUploadService';
 import { IAttachment, AttachmentCategory } from '../models/IAttachment';
+import { IAsset } from '../models/IAsset';
+import { IRepairEntry } from '../models/IRepairEntry';
 import styles from './AssetDetail.module.scss';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface IAssetAttachmentSectionProps {
   assetId: string;
+  asset: IAsset;
+  repairs: IRepairEntry[];
   fileService: FileUploadService;
 }
 
-const ALL_CATEGORIES: AttachmentCategory[] = [
-  'purchase', 'repairs', 'gifted', 'transfer', 'scrap', 'validation', 'photos', 'other',
+// Categories available in the upload dialog
+const UPLOAD_CATEGORY_OPTIONS: { key: AttachmentCategory; text: string }[] = [
+  { key: 'repairs',  text: 'Repair Report' },
+  { key: 'purchase', text: 'Purchase Invoice' },
+  { key: 'gifted',   text: 'Gift Document' },
+  { key: 'scrap',    text: 'Scrap / E-Waste Document' },
+  { key: 'warranty', text: 'Warranty Document' },
+  { key: 'other',    text: 'Other' },
 ];
 
-const CATEGORY_OPTIONS = ALL_CATEGORIES.map(c => ({
-  key: c,
-  text: c.charAt(0).toUpperCase() + c.slice(1),
-}));
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+const CATEGORY_LABELS: Record<AttachmentCategory, string> = {
+  purchase:  'Purchase Invoice',
+  repairs:   'Repair Report',
+  gifted:    'Gift Document',
+  scrap:     'Scrap Document',
+  warranty:  'Warranty Document',
+  other:     'Other',
+};
 
 const formatSize = (bytes: number): string => {
   if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024)          return `${bytes} B`;
+  if (bytes < 1024 * 1024)   return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
 const formatDate = (iso: string): string => {
+  if (!iso) return '';
   try {
-    const d = new Date(iso);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   } catch {
     return iso;
   }
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
+const getPreviewType = (fileName: string): 'browser' | 'office' | 'download' => {
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+  if (['pdf','png','jpg','jpeg','gif','svg','webp','bmp','tiff','txt','csv'].includes(ext)) return 'browser';
+  if (['doc','docx','xls','xlsx','ppt','pptx'].includes(ext)) return 'office';
+  return 'download';
+};
 
-const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({ assetId, fileService }) => {
-  const [attachments, setAttachments] = useState<IAttachment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+// Build an IAttachment from a stored URL field (server-relative or absolute)
+const buildUrlAttachment = (
+  url: string, displayName: string, category: AttachmentCategory
+): IAttachment => {
+  const absUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
+  return {
+    name: displayName,
+    serverRelativeUrl: url,
+    absoluteUrl: absUrl,
+    downloadUrl: `${absUrl}?download=1`,
+    category,
+    timeCreated: '',
+    fileSize: 0,
+    previewType: getPreviewType(displayName),
+  };
+};
 
-  // Upload dialog state
-  const [showUploadDlg, setShowUploadDlg] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadCategory, setUploadCategory] = useState<AttachmentCategory>('other');
-  const [uploading, setUploading] = useState(false);
+const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({
+  assetId, asset, repairs, fileService,
+}) => {
+  const [libraryFiles, setLibraryFiles] = useState<IAttachment[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
 
-  // Delete confirmation state
+  // Upload dialog
+  const [showUploadDlg, setShowUploadDlg]         = useState(false);
+  const [selectedFiles, setSelectedFiles]         = useState<File[]>([]);
+  const [uploadCategory, setUploadCategory]       = useState<AttachmentCategory>('repairs');
+  const [uploading, setUploading]                 = useState(false);
+
+  // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<IAttachment | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting]         = useState(false);
 
-  const loadFiles = useCallback(async () => {
+  const loadLibraryFiles = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const files = await fileService.listFiles(assetId);
-      setAttachments(files);
+      setLibraryFiles(files);
     } catch {
-      setError('Failed to load attachments.');
+      setError('Failed to load repair attachments from library.');
     } finally {
       setLoading(false);
     }
   }, [assetId, fileService]);
 
-  useEffect(() => { loadFiles(); }, [loadFiles]);
+  useEffect(() => { loadLibraryFiles(); }, [loadLibraryFiles]);
 
-  const handleOpen = (attachment: IAttachment) => {
+  // Build URL-field-based attachments from the asset record (purchase bill only)
+  const urlAttachments = useMemo((): IAttachment[] => {
+    const list: IAttachment[] = [];
+    if (asset.PurchaseBillUrl)
+      list.push(buildUrlAttachment(asset.PurchaseBillUrl, 'Purchase Invoice', 'purchase'));
+    return list;
+  }, [asset]);
+
+  // Build repair attachments from the Asset_Repairs list entries
+  const repairAttachments = useMemo((): IAttachment[] =>
+    repairs
+      .filter(r => r.AttachmentUrl)
+      .map(r => buildUrlAttachment(
+        r.AttachmentUrl!,
+        `Repair — ${r.RepairDate?.slice(0, 10) ?? ''}`,
+        'repairs'
+      )),
+    [repairs]
+  );
+
+  // Merge all three sources, deduplicating by serverRelativeUrl
+  const allAttachments = useMemo((): IAttachment[] => {
+    const seen = new Set<string>();
+    return [...urlAttachments, ...repairAttachments, ...libraryFiles].filter(a => {
+      if (seen.has(a.serverRelativeUrl)) return false;
+      seen.add(a.serverRelativeUrl);
+      return true;
+    });
+  }, [urlAttachments, repairAttachments, libraryFiles]);
+
+  const handleOpen = (attachment: IAttachment): void => {
     window.open(
       attachment.previewType === 'download' ? attachment.downloadUrl : attachment.absoluteUrl,
       '_blank',
     );
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (): Promise<void> => {
     if (!selectedFiles.length) return;
     setUploading(true);
     setError('');
     try {
       for (const file of selectedFiles) {
-        await fileService.upload(assetId, uploadCategory, file);
+        // Prefix repair files with timestamp to avoid name collisions
+        const uploadFile = uploadCategory === 'repairs'
+          ? new File([file], `${Date.now()}_${file.name}`, { type: file.type })
+          : file;
+        await fileService.upload(assetId, uploadCategory, uploadFile);
       }
       setShowUploadDlg(false);
       setSelectedFiles([]);
-      setUploadCategory('other');
-      await loadFiles();
+      setUploadCategory('repairs');
+      await loadLibraryFiles();
     } catch {
       setError('Upload failed. Please try again.');
     } finally {
@@ -103,13 +171,13 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({ assetI
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     if (!deleteTarget) return;
     setDeleting(true);
     setError('');
     try {
       await fileService.deleteFile(deleteTarget.serverRelativeUrl);
-      setAttachments(prev => prev.filter(a => a.serverRelativeUrl !== deleteTarget.serverRelativeUrl));
+      setLibraryFiles(prev => prev.filter(a => a.serverRelativeUrl !== deleteTarget.serverRelativeUrl));
       setDeleteTarget(null);
     } catch {
       setError('Delete failed. Please try again.');
@@ -118,51 +186,47 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({ assetI
     }
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // Only library files can be deleted (URL-field attachments are managed via the form)
+  const isLibraryFile = (a: IAttachment): boolean =>
+    libraryFiles.some(f => f.serverRelativeUrl === a.serverRelativeUrl);
 
   return (
     <div className={styles.card} style={{ marginTop: 16 }}>
-      <div className={styles.cardTitle}>
-        Attachments
-      </div>
+      <div className={styles.cardTitle}>Attachments</div>
 
-      {error && (
-        <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>
+      {error && <MessageBar messageBarType={MessageBarType.error}>{error}</MessageBar>}
+
+      {loading && <Spinner size={SpinnerSize.small} label="Loading attachments…" />}
+
+      {!loading && allAttachments.length === 0 && (
+        <div className={styles.emptyState}>No attachments uploaded yet.</div>
       )}
 
-      {loading && (
-        <Spinner size={SpinnerSize.small} label="Loading attachments…" />
-      )}
-
-      {!loading && attachments.length === 0 && (
-        <div className={styles.emptyState}>
-          No attachments uploaded yet.
-        </div>
-      )}
-
-      {!loading && attachments.length > 0 && (
+      {!loading && allAttachments.length > 0 && (
         <div>
-          {attachments.map(a => (
+          {allAttachments.map(a => (
             <div key={a.serverRelativeUrl} className={styles.attachItem}>
               <div className={styles.attachInfo}>
                 <span className={styles.attachName} title={a.name}>{a.name}</span>
                 <div className={styles.attachMeta}>
-                  <span className={styles.badge}>{a.category}</span>
+                  <span className={styles.badge}>{CATEGORY_LABELS[a.category] ?? a.category}</span>
                   {a.fileSize > 0 && <span>{formatSize(a.fileSize)}</span>}
-                  <span>{formatDate(a.timeCreated)}</span>
+                  {a.timeCreated && <span>{formatDate(a.timeCreated)}</span>}
                 </div>
               </div>
               <div className={styles.attachActions}>
                 <IconButton
                   iconProps={{ iconName: a.previewType === 'download' ? 'Download' : 'View' }}
-                  title={a.previewType === 'download' ? 'Download' : 'Preview'}
+                  title={a.previewType === 'download' ? 'Download' : 'Open'}
                   onClick={() => handleOpen(a)}
                 />
-                <IconButton
-                  iconProps={{ iconName: 'Delete' }}
-                  title="Delete"
-                  onClick={() => setDeleteTarget(a)}
-                />
+                {isLibraryFile(a) && (
+                  <IconButton
+                    iconProps={{ iconName: 'Delete' }}
+                    title="Delete"
+                    onClick={() => setDeleteTarget(a)}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -171,13 +235,13 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({ assetI
 
       <DefaultButton
         iconProps={{ iconName: 'Upload' }}
-        onClick={() => { setSelectedFiles([]); setUploadCategory('other'); setShowUploadDlg(true); }}
+        onClick={() => { setSelectedFiles([]); setUploadCategory('repairs'); setShowUploadDlg(true); }}
         style={{ marginTop: 8 }}
       >
         Upload Files
       </DefaultButton>
 
-      {/* ── Upload Dialog ── */}
+      {/* Upload Dialog */}
       <Dialog
         hidden={!showUploadDlg}
         onDismiss={() => { setShowUploadDlg(false); setSelectedFiles([]); }}
@@ -199,20 +263,15 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({ assetI
           <Dropdown
             label="Category"
             selectedKey={uploadCategory}
-            options={CATEGORY_OPTIONS}
-            onChange={(_e, opt) => setUploadCategory((opt?.key as AttachmentCategory) || 'other')}
+            options={UPLOAD_CATEGORY_OPTIONS}
+            onChange={(_e, opt) => setUploadCategory((opt?.key as AttachmentCategory) || 'repairs')}
           />
           {selectedFiles.length > 0 && (
-            <span style={{ fontSize: 12, color: '#707070' }}>
-              {selectedFiles.length} file(s) selected
-            </span>
+            <span style={{ fontSize: 12, color: '#707070' }}>{selectedFiles.length} file(s) selected</span>
           )}
         </div>
         <DialogFooter>
-          <PrimaryButton
-            onClick={handleUpload}
-            disabled={!selectedFiles.length || uploading}
-          >
+          <PrimaryButton onClick={handleUpload} disabled={!selectedFiles.length || uploading}>
             {uploading ? 'Uploading…' : 'Upload'}
           </PrimaryButton>
           <DefaultButton onClick={() => { setShowUploadDlg(false); setSelectedFiles([]); }}>
@@ -221,14 +280,11 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({ assetI
         </DialogFooter>
       </Dialog>
 
-      {/* ── Delete Confirmation ── */}
+      {/* Delete Confirmation */}
       <Dialog
         hidden={!deleteTarget}
         onDismiss={() => setDeleteTarget(null)}
-        dialogContentProps={{
-          type: DialogType.normal,
-          title: 'Delete Attachment?',
-        }}
+        dialogContentProps={{ type: DialogType.normal, title: 'Delete Attachment?' }}
         modalProps={{ isBlocking: false }}
       >
         <p>

@@ -9,10 +9,10 @@ import {
   Separator,
 } from '@fluentui/react';
 import {
-  ArrowLeftRegular, EditRegular, ArrowSwapRegular,
+  ArrowLeftRegular, EditRegular,
   TagRegular, LaptopRegular, MoneyRegular, PersonRegular,
   NoteRegular, WrenchRegular, DocumentRegular, LeafThreeRegular,
-  BoxRegular, AddRegular, AttachRegular, CalendarRegular,
+  AddRegular, AttachRegular, CalendarRegular,
   HistoryRegular,
 } from '@fluentui/react-icons';
 import {
@@ -22,9 +22,13 @@ import {
 import { IAssetHistory } from '../models/IAssetHistory';
 import { IAssetAssignment } from '../models/IAssetAssignment';
 import { IRepairEntry } from '../models/IRepairEntry';
+import { IGiftedAsset } from '../models/IGiftedAsset';
+import { IScrapAsset } from '../models/IScrapAsset';
 import { AssetService } from '../services/AssetService';
 import { AssetRepairService } from '../services/AssetRepairService';
 import { AssetAssignmentService } from '../services/AssetAssignmentService';
+import { AssetGiftedService } from '../services/AssetGiftedService';
+import { AssetScrapService } from '../services/AssetScrapService';
 import { FileUploadService } from '../services/FileUploadService';
 import { AssetIdGenerator } from '../utils/AssetIdGenerator';
 import AssetAttachmentSection from './AssetAttachmentSection';
@@ -37,6 +41,8 @@ interface IAssetDetailProps {
   assetService: AssetService;
   repairService: AssetRepairService;
   assignmentService: AssetAssignmentService;
+  giftedService: AssetGiftedService;
+  scrapService: AssetScrapService;
   fileService: FileUploadService;
   currentUser: string;
   onBack: () => void;
@@ -76,24 +82,211 @@ const Card: React.FC<{ title: string; icon: React.ReactNode; children: React.Rea
   </div>
 );
 
+// ── Gifted details dialog ──────────────────────────────────────────────────────
+
+interface IGiftedDialogProps {
+  open: boolean;
+  draft: Partial<IGiftedAsset>;
+  saving: boolean;
+  onChange: (d: Partial<IGiftedAsset>) => void;
+  onConfirm: (finalDraft: Partial<IGiftedAsset>) => void;
+  onClose: () => void;
+  fileService: FileUploadService;
+  assetId: string;
+}
+
+const GiftedDialog: React.FC<IGiftedDialogProps> = ({
+  open, draft, saving, onChange, onConfirm, onClose, fileService, assetId,
+}) => {
+  const [attachFile, setAttachFile] = useState<File | null>(null);
+  const set = <K extends keyof IGiftedAsset>(k: K, v: IGiftedAsset[K]) => onChange({ ...draft, [k]: v });
+
+  useEffect(() => {
+    if (!open) setAttachFile(null);
+  }, [open]);
+
+  const handleConfirm = async () => {
+    let finalDraft = { ...draft };
+    if (attachFile) {
+      const r = await fileService.upload(assetId, 'gifted', attachFile);
+      finalDraft = { ...finalDraft, GiftAttachmentUrl: r.serverRelativeUrl };
+    }
+    onConfirm(finalDraft);
+  };
+
+  return (
+    <Dialog
+      hidden={!open}
+      onDismiss={onClose}
+      dialogContentProps={{ type: DialogType.normal, title: 'Gifted Details' }}
+      modalProps={{ isBlocking: false }}
+      styles={{ main: { minWidth: 480 } }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+        <TextField
+          label="Gifted To *"
+          value={draft.GiftedTo || ''}
+          onChange={(_e, v) => set('GiftedTo', v || '')}
+        />
+        <div>
+          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Gifted Date</label>
+          <input
+            type="date"
+            value={draft.GiftedDate ? draft.GiftedDate.slice(0, 10) : ''}
+            onChange={e => set('GiftedDate', e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : '')}
+            style={{ width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, border: '1px solid #d1d1d1', boxSizing: 'border-box' }}
+          />
+        </div>
+        <TextField
+          label="Remarks"
+          multiline
+          rows={2}
+          value={draft.GiftRemarks || ''}
+          onChange={(_e, v) => set('GiftRemarks', v || '')}
+        />
+        <div>
+          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Authorisation Letter</label>
+          {draft.GiftAttachmentUrl && (
+            <a href={draft.GiftAttachmentUrl} target="_blank" rel="noreferrer" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+              View existing
+            </a>
+          )}
+          <input type="file" onChange={e => setAttachFile(e.target.files?.[0] ?? null)} />
+        </div>
+      </div>
+      <DialogFooter>
+        <PrimaryButton onClick={handleConfirm} disabled={saving || !draft.GiftedTo}>
+          {saving ? 'Saving…' : 'Save'}
+        </PrimaryButton>
+        <DefaultButton onClick={onClose}>Cancel</DefaultButton>
+      </DialogFooter>
+    </Dialog>
+  );
+};
+
+// ── Scrap details dialog ───────────────────────────────────────────────────────
+
+interface IScrapDialogProps {
+  open: boolean;
+  draft: Partial<IScrapAsset>;
+  saving: boolean;
+  onChange: (d: Partial<IScrapAsset>) => void;
+  onConfirm: (finalDraft: Partial<IScrapAsset>) => void;
+  onClose: () => void;
+  fileService: FileUploadService;
+  assetId: string;
+}
+
+const ScrapDialog: React.FC<IScrapDialogProps> = ({
+  open, draft, saving, onChange, onConfirm, onClose, fileService, assetId,
+}) => {
+  const [attachFile, setAttachFile] = useState<File | null>(null);
+  const set = <K extends keyof IScrapAsset>(k: K, v: IScrapAsset[K]) => onChange({ ...draft, [k]: v });
+
+  useEffect(() => {
+    if (!open) setAttachFile(null);
+  }, [open]);
+
+  const handleConfirm = async () => {
+    let finalDraft = { ...draft };
+    if (attachFile) {
+      const r = await fileService.upload(assetId, 'scrap', attachFile);
+      finalDraft = { ...finalDraft, ScrapAttachmentUrl: r.serverRelativeUrl };
+    }
+    onConfirm(finalDraft);
+  };
+
+  return (
+    <Dialog
+      hidden={!open}
+      onDismiss={onClose}
+      dialogContentProps={{ type: DialogType.normal, title: 'Scrap / Disposal Details' }}
+      modalProps={{ isBlocking: false }}
+      styles={{ main: { minWidth: 480 } }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+        <div>
+          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Scrap Date</label>
+          <input
+            type="date"
+            value={draft.ScrapDate ? draft.ScrapDate.slice(0, 10) : ''}
+            onChange={e => set('ScrapDate', e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : '')}
+            style={{ width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, border: '1px solid #d1d1d1', boxSizing: 'border-box' }}
+          />
+        </div>
+        <TextField
+          label="Scrap Vendor"
+          value={draft.ScrapVendor || ''}
+          onChange={(_e, v) => set('ScrapVendor', v || '')}
+        />
+        <TextField
+          label="Scrap Amount (INR)"
+          type="number"
+          prefix="₹"
+          value={String(draft.ScrapAmount ?? 0)}
+          onChange={(_e, v) => set('ScrapAmount', parseFloat(v || '0'))}
+        />
+        <TextField
+          label="Remarks"
+          multiline
+          rows={2}
+          value={draft.ScrapRemarks || ''}
+          onChange={(_e, v) => set('ScrapRemarks', v || '')}
+        />
+        <div>
+          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Certificate / Document</label>
+          {draft.ScrapAttachmentUrl && (
+            <a href={draft.ScrapAttachmentUrl} target="_blank" rel="noreferrer" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+              View existing
+            </a>
+          )}
+          <input type="file" onChange={e => setAttachFile(e.target.files?.[0] ?? null)} />
+        </div>
+      </div>
+      <DialogFooter>
+        <PrimaryButton onClick={handleConfirm} disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </PrimaryButton>
+        <DefaultButton onClick={onClose}>Cancel</DefaultButton>
+      </DialogFooter>
+    </Dialog>
+  );
+};
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 const AssetDetail: React.FC<IAssetDetailProps> = ({
-  asset, assetService, repairService, assignmentService, fileService,
+  asset, assetService, repairService, assignmentService,
+  giftedService, scrapService, fileService,
   currentUser, onBack, onEdit, onEditAssignment, onStatusChange,
 }) => {
   const [history, setHistory]           = useState<IAssetHistory[]>([]);
   const [repairs, setRepairs]           = useState<IRepairEntry[]>([]);
   const [assignment, setAssignment]     = useState<IAssetAssignment | null>(null);
+  const [gifted, setGifted]             = useState<IGiftedAsset | null>(null);
+  const [scrap, setScrap]               = useState<IScrapAsset | null>(null);
   const [loadingHist, setLoadingHist]   = useState(true);
   const [loadingRepairs, setLoadingRepairs] = useState(true);
   const [loadingAssign, setLoadingAssign] = useState(true);
+  const [loadingGifted, setLoadingGifted] = useState(false);
+  const [loadingScrap, setLoadingScrap]   = useState(false);
 
   const [showStatusDlg, setShowStatusDlg] = useState(false);
   const [newStatus, setNewStatus]       = useState<AssetStatus | null>(null);
   const [statusNote, setStatusNote]     = useState('');
   const [changing, setChanging]         = useState(false);
   const [noteErr, setNoteErr]           = useState('');
+
+  // Gifted / scrap edit dialogs
+  const [showGiftedDlg, setShowGiftedDlg]   = useState(false);
+  const [giftedDraft, setGiftedDraft]       = useState<Partial<IGiftedAsset>>({});
+  const [savingGifted, setSavingGifted]     = useState(false);
+  const [showScrapDlg, setShowScrapDlg]     = useState(false);
+  const [scrapDraft, setScrapDraft]         = useState<Partial<IScrapAsset>>({});
+  const [savingScrap, setSavingScrap]       = useState(false);
+
+  const showGifted = asset.Status === 'Gifted';
+  const showScrap  = asset.Status === 'Scrapped' || asset.Status === 'Disposed';
 
   const loadData = useCallback(async () => {
     setLoadingHist(true);
@@ -112,7 +305,33 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
     setLoadingAssign(false);
   }, [asset.Title, assetService, repairService, assignmentService]);
 
+  const loadGifted = useCallback(async () => {
+    if (!showGifted) return;
+    setLoadingGifted(true);
+    try {
+      const g = await giftedService.getGiftedByAsset(asset.Title);
+      setGifted(g);
+      if (g) setGiftedDraft({ ...g });
+    } finally {
+      setLoadingGifted(false);
+    }
+  }, [asset.Title, giftedService, showGifted]);
+
+  const loadScrap = useCallback(async () => {
+    if (!showScrap) return;
+    setLoadingScrap(true);
+    try {
+      const s = await scrapService.getScrapByAsset(asset.Title);
+      setScrap(s);
+      if (s) setScrapDraft({ ...s });
+    } finally {
+      setLoadingScrap(false);
+    }
+  }, [asset.Title, scrapService, showScrap]);
+
   useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadGifted(); }, [loadGifted]);
+  useEffect(() => { loadScrap(); }, [loadScrap]);
 
   const validTransitions = ASSET_STATUS_TRANSITIONS[asset.Status] || [];
 
@@ -137,24 +356,61 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
     }
   };
 
-  const daysLeft = AssetIdGenerator.daysUntilWarrantyExpiry(asset.WarrantyExpiry);
-
-  const historyIcon = (action: string | undefined): string => {
-    switch (action) {
-      case 'Created':       return '＋';
-      case 'StatusChanged': return '⇄';
-      case 'Assigned':      return '👤';
-      case 'Unassigned':    return '↩';
-      default:              return '✎';
+  const handleSaveGifted = async (finalDraft: Partial<IGiftedAsset>) => {
+    if (!finalDraft.GiftedTo) return;
+    setSavingGifted(true);
+    try {
+      if (gifted?.Id) {
+        await giftedService.updateGifted(gifted.Id, finalDraft);
+        setGifted({ ...gifted, ...finalDraft } as IGiftedAsset);
+      } else {
+        const created = await giftedService.addGifted({
+          Title: asset.Title,
+          AssetItemId: asset.Id!,
+          GiftedTo: finalDraft.GiftedTo!,
+          GiftedDate: finalDraft.GiftedDate,
+          GiftAttachmentUrl: finalDraft.GiftAttachmentUrl,
+          GiftRemarks: finalDraft.GiftRemarks,
+        });
+        setGifted(created);
+      }
+      setShowGiftedDlg(false);
+    } finally {
+      setSavingGifted(false);
     }
   };
 
-  // ── Derived visibility flags ────────────────────────────────────────────────
+  const handleSaveScrap = async (finalDraft: Partial<IScrapAsset>) => {
+    setSavingScrap(true);
+    try {
+      if (scrap?.Id) {
+        await scrapService.updateScrap(scrap.Id, finalDraft);
+        setScrap({ ...scrap, ...finalDraft } as IScrapAsset);
+      } else {
+        const created = await scrapService.addScrap({
+          Title: asset.Title,
+          AssetItemId: asset.Id!,
+          ScrapDate: finalDraft.ScrapDate,
+          ScrapVendor: finalDraft.ScrapVendor,
+          ScrapAmount: finalDraft.ScrapAmount,
+          ScrapAttachmentUrl: finalDraft.ScrapAttachmentUrl,
+          ScrapRemarks: finalDraft.ScrapRemarks,
+        });
+        setScrap(created);
+      }
+      setShowScrapDlg(false);
+    } finally {
+      setSavingScrap(false);
+    }
+  };
 
-  const showGifted   = asset.Status === 'Gifted';
-  const showTransfer = asset.Status === 'Transferred';
-  const showScrap    = asset.Status === 'Scrapped' || asset.Status === 'Disposed';
-  const hasStockData = !!(asset.DateAddedToStock || asset.ConditionAtStockEntry || asset.StockRemarks);
+  const daysLeft = AssetIdGenerator.daysUntilWarrantyExpiry(asset.WarrantyExpiry);
+
+  const historyIcon = (h: IAssetHistory): string => {
+    if (h.PreviousStatus && h.NewStatus) return '⇄';
+    if (h.NewStatus && !h.PreviousStatus) return '＋';
+    return '✎';
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -226,21 +482,10 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
             </div>
             {asset.PurchaseBillUrl && (
               <a href={asset.PurchaseBillUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
-                <AttachRegular /> {asset.PurchaseBillName || 'View purchase bill'}
+                <AttachRegular /> View purchase bill
               </a>
             )}
           </Card>
-
-          {/* Stock details (conditional) */}
-          {hasStockData && (
-            <Card title="Stock / In-Store Details" icon={<BoxRegular />}>
-              <div className={styles.fieldGrid}>
-                <F label="Date Added to Stock" value={AssetIdGenerator.formatDate(asset.DateAddedToStock || '')} />
-                <F label="Condition"           value={asset.ConditionAtStockEntry} />
-                <F label="Remarks"             value={asset.StockRemarks} />
-              </div>
-            </Card>
-          )}
 
           {/* Repair history */}
           <Card title="Repair History" icon={<WrenchRegular />}>
@@ -255,15 +500,19 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                         <span style={{ fontSize: 12, color: '#707070' }}>{r.RepairVendor}</span>
                       </div>
                       <span style={{ fontSize: 12 }}>{r.IssueDescription}</span>
+                      {r.Resolution && (
+                        <span style={{ fontSize: 12, color: '#107c10', display: 'block' }}>
+                          Resolution: {r.Resolution}
+                        </span>
+                      )}
                       {r.RepairCost > 0 && (
                         <span style={{ fontSize: 12, color: '#707070', display: 'block' }}>
                           ₹{r.RepairCost.toLocaleString('en-IN')}
-                          {r.RepairInvoiceNumber && ` · Inv: ${r.RepairInvoiceNumber}`}
                         </span>
                       )}
                       {r.AttachmentUrl && (
                         <a href={r.AttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
-                          <AttachRegular /> {r.AttachmentName || 'View attachment'}
+                          <AttachRegular /> View attachment
                         </a>
                       )}
                       <Separator />
@@ -272,55 +521,75 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
             }
           </Card>
 
-          {/* Gifted details (conditional) */}
+          {/* Gifted details (conditional — loaded from Asset_Gifted) */}
           {showGifted && (
             <Card title="Gifted Details" icon={<DocumentRegular />}>
-              <div className={styles.fieldGrid}>
-                <F label="Gifted To"     value={asset.GiftedTo} />
-                <F label="Gifted Date"   value={AssetIdGenerator.formatDate(asset.GiftedDate || '')} />
-                <F label="Authorised By" value={asset.GiftedAuthorisedBy} />
-                <F label="Remarks"       value={asset.GiftedRemarks} />
-              </div>
-              {asset.GiftedAttachmentUrl && (
-                <a href={asset.GiftedAttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
-                  <AttachRegular /> Authorisation letter
-                </a>
+              {loadingGifted ? (
+                <Spinner size={SpinnerSize.small} label="Loading…" />
+              ) : gifted ? (
+                <>
+                  <div className={styles.fieldGrid}>
+                    <F label="Gifted To"   value={gifted.GiftedTo} />
+                    <F label="Gifted Date" value={AssetIdGenerator.formatDate(gifted.GiftedDate || '')} />
+                    <F label="Remarks"     value={gifted.GiftRemarks} />
+                  </div>
+                  {gifted.GiftAttachmentUrl && (
+                    <a href={gifted.GiftAttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
+                      <AttachRegular /> Authorisation letter
+                    </a>
+                  )}
+                  <DefaultButton
+                    iconProps={{ iconName: 'Edit' }}
+                    onClick={() => { setGiftedDraft({ ...gifted }); setShowGiftedDlg(true); }}
+                    style={{ marginTop: 8 }}
+                  >
+                    Edit Gifted Details
+                  </DefaultButton>
+                </>
+              ) : (
+                <DefaultButton
+                  iconProps={{ iconName: 'Add' }}
+                  onClick={() => { setGiftedDraft({ Title: asset.Title, AssetItemId: asset.Id }); setShowGiftedDlg(true); }}
+                >
+                  Add Gifted Details
+                </DefaultButton>
               )}
             </Card>
           )}
 
-          {/* Transfer details (conditional) */}
-          {showTransfer && (
-            <Card title="Transfer of Ownership" icon={<ArrowSwapRegular />}>
-              <div className={styles.fieldGrid}>
-                <F label="Transferred From" value={asset.TransferredFrom} />
-                <F label="Transferred To"   value={asset.TransferredTo} />
-                <F label="Transfer Date"    value={AssetIdGenerator.formatDate(asset.TransferDate || '')} />
-                <F label="Reason"           value={asset.TransferReason} />
-              </div>
-              {asset.TransferAttachmentUrl && (
-                <a href={asset.TransferAttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
-                  <AttachRegular /> Transfer letter
-                </a>
-              )}
-            </Card>
-          )}
-
-          {/* Scrap details (conditional) */}
+          {/* Scrap details (conditional — loaded from Asset_Scrap) */}
           {showScrap && (
             <Card title="Scrap / Disposal Details" icon={<LeafThreeRegular />}>
-              <div className={styles.fieldGrid}>
-                <F label="Scrap Date"         value={AssetIdGenerator.formatDate(asset.ScrapDate || '')} />
-                <F label="Scrap Vendor"        value={asset.ScrapVendor} />
-                <F label="Scrap Invoice"       value={asset.ScrapInvoiceNumber} />
-                <F label="Scrap PO"            value={asset.ScrapPONumber} />
-                <F label="Scrap Amount"        value={asset.ScrapAmount ? `₹${Number(asset.ScrapAmount).toLocaleString('en-IN')}` : undefined} />
-                <F label="E-Waste Cert. No."   value={asset.EWasteCertNumber} />
-              </div>
-              {asset.ScrapAttachmentUrl && (
-                <a href={asset.ScrapAttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
-                  <AttachRegular /> E-Waste certificate
-                </a>
+              {loadingScrap ? (
+                <Spinner size={SpinnerSize.small} label="Loading…" />
+              ) : scrap ? (
+                <>
+                  <div className={styles.fieldGrid}>
+                    <F label="Scrap Date"   value={AssetIdGenerator.formatDate(scrap.ScrapDate || '')} />
+                    <F label="Scrap Vendor" value={scrap.ScrapVendor} />
+                    <F label="Scrap Amount" value={scrap.ScrapAmount ? `₹${Number(scrap.ScrapAmount).toLocaleString('en-IN')}` : undefined} />
+                    <F label="Remarks"      value={scrap.ScrapRemarks} />
+                  </div>
+                  {scrap.ScrapAttachmentUrl && (
+                    <a href={scrap.ScrapAttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
+                      <AttachRegular /> Certificate / Document
+                    </a>
+                  )}
+                  <DefaultButton
+                    iconProps={{ iconName: 'Edit' }}
+                    onClick={() => { setScrapDraft({ ...scrap }); setShowScrapDlg(true); }}
+                    style={{ marginTop: 8 }}
+                  >
+                    Edit Scrap Details
+                  </DefaultButton>
+                </>
+              ) : (
+                <DefaultButton
+                  iconProps={{ iconName: 'Add' }}
+                  onClick={() => { setScrapDraft({ Title: asset.Title, AssetItemId: asset.Id }); setShowScrapDlg(true); }}
+                >
+                  Add Scrap Details
+                </DefaultButton>
               )}
             </Card>
           )}
@@ -378,8 +647,8 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                 <F label="Last Maintenance" value={AssetIdGenerator.formatDate(assignment.LastMaintenanceDate || '')} />
                 <F label="Next Maintenance" value={AssetIdGenerator.formatDate(assignment.NextMaintenanceDate || '')} />
               </div>
-              {assignment.MaintenanceNotes && (
-                <p className={styles.remarks} style={{ marginTop: 8 }}>{assignment.MaintenanceNotes}</p>
+              {assignment.Remarks && (
+                <p className={styles.remarks} style={{ marginTop: 8 }}>{assignment.Remarks}</p>
               )}
             </div>
           )}
@@ -387,6 +656,8 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
           {/* ── Attachments ── */}
           <AssetAttachmentSection
             assetId={asset.Title}
+            asset={asset}
+            repairs={repairs}
             fileService={fileService}
           />
 
@@ -401,16 +672,18 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
               <div className={styles.timeline}>
                 {history.map((h, i) => (
                   <div key={h.Id ?? i} className={styles.timelineItem}>
-                    <div className={styles.timelineDot}>{historyIcon(h.Action)}</div>
+                    <div className={styles.timelineDot}>{historyIcon(h)}</div>
                     <div className={styles.timelineContent}>
                       <div className={styles.timelineAction}>
-                        {h.Action === 'StatusChanged'
+                        {h.PreviousStatus && h.NewStatus
                           ? <><strong>{h.PreviousStatus}</strong>{' → '}<strong>{h.NewStatus}</strong></>
-                          : <strong>{h.Action || 'Updated'}</strong>
+                          : h.NewStatus
+                            ? <strong>Created ({h.NewStatus})</strong>
+                            : <strong>Updated</strong>
                         }
                       </div>
                       <div className={styles.timelineMeta}>
-                        {h.ChangedBy} · {AssetIdGenerator.formatDate(h.ChangedDate)}
+                        {h.ChangedBy} · {AssetIdGenerator.formatDate(h.ChangeDate)}
                       </div>
                       {h.HistoryNotes && (
                         <div className={styles.timelineNote}>{h.HistoryNotes}</div>
@@ -477,6 +750,30 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
           </DefaultButton>
         </DialogFooter>
       </Dialog>
+
+      {/* ── Gifted Details Dialog ── */}
+      <GiftedDialog
+        open={showGiftedDlg}
+        draft={giftedDraft}
+        saving={savingGifted}
+        onChange={setGiftedDraft}
+        onConfirm={handleSaveGifted}
+        onClose={() => setShowGiftedDlg(false)}
+        fileService={fileService}
+        assetId={asset.Title}
+      />
+
+      {/* ── Scrap Details Dialog ── */}
+      <ScrapDialog
+        open={showScrapDlg}
+        draft={scrapDraft}
+        saving={savingScrap}
+        onChange={setScrapDraft}
+        onConfirm={handleSaveScrap}
+        onClose={() => setShowScrapDlg(false)}
+        fileService={fileService}
+        assetId={asset.Title}
+      />
     </div>
   );
 };

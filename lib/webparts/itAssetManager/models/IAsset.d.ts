@@ -1,6 +1,5 @@
-export declare type AssetStatus = 'Procured' | 'Stock' | 'Active' | 'Repair' | 'Transferred' | 'Gifted' | 'Lost' | 'Stolen' | 'Scrapped' | 'Disposed';
+export declare type AssetStatus = 'Procured' | 'Stock' | 'Active' | 'Repair' | 'Gifted' | 'Lost' | 'Stolen' | 'Scrapped' | 'Disposed';
 export declare type AssetType = 'LAP' | 'MAC' | 'DTP' | 'MON' | 'DOC' | 'MOB' | 'NET' | 'ACC';
-export declare type StockCondition = 'Good' | 'Refurbished' | 'Damaged';
 export interface IAsset {
     Id?: number;
     Title: string;
@@ -23,27 +22,6 @@ export interface IAsset {
     Remarks: string;
     SequenceNumber?: number;
     PurchaseBillUrl?: string;
-    PurchaseBillName?: string;
-    DateAddedToStock?: string;
-    ConditionAtStockEntry?: StockCondition;
-    StockRemarks?: string;
-    GiftedTo?: string;
-    GiftedDate?: string;
-    GiftedAuthorisedBy?: string;
-    GiftedRemarks?: string;
-    GiftedAttachmentUrl?: string;
-    TransferredFrom?: string;
-    TransferredTo?: string;
-    TransferDate?: string;
-    TransferReason?: string;
-    TransferAttachmentUrl?: string;
-    ScrapDate?: string;
-    ScrapVendor?: string;
-    ScrapInvoiceNumber?: string;
-    ScrapPONumber?: string;
-    ScrapAmount?: number;
-    EWasteCertNumber?: string;
-    ScrapAttachmentUrl?: string;
 }
 export declare const ASSET_STATUS_TRANSITIONS: Record<AssetStatus, AssetStatus[]>;
 export declare const STATUS_REQUIRES_NOTE: AssetStatus[];

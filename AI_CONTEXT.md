@@ -80,9 +80,18 @@ Immutable audit log ledger.
 * **ChangedDate:** ISO DateTime string.
 * **HistoryNotes:** Remarks summarizing the justification for changes.
 
-### Document Library: `AssetAttachments`
-Document-based attachment storage organized by asset ID and category.
-* **Folder structure:** `AssetAttachments/{AssetID}/{category}/` where category is one of: `purchase`, `repairs`, `gifted`, `transfer`, `scrap`, `validation`, `photos`.
+### Document Library: `IT Assets`
+Document-based attachment storage organized by category. Only repair reports use a per-asset subfolder.
+* **Folder structure:**
+  - `IT Assets/Purchase Invoices/` → URL stored in `IT_Assets.PurchaseBillUrl`
+  - `IT Assets/Product Photos/`
+  - `IT Assets/Validation Reports/`
+  - `IT Assets/Transfer Documents/` → URL stored in `IT_Assets.TransferAttachmentUrl`
+  - `IT Assets/Gift Documents/` → URL stored in `IT_Assets.GiftedAttachmentUrl`
+  - `IT Assets/Scrap Documents/` → URL stored in `IT_Assets.ScrapAttachmentUrl`
+  - `IT Assets/Repair Reports/{AssetID}/` → URL stored in `Asset_Repairs.AttachmentUrl`
+  - `IT Assets/Other/`
+* **Do NOT use:** `AssetAttachments/{AssetId}/category/` — deprecated and removed.
 * Managed at runtime by `FileUploadService.ts`.
 
 ---
@@ -124,12 +133,13 @@ Located under `src/webparts/itAssetManager/services/`:
   - `deactivateExisting(assetId)`: Sets `IsActive = false` on the current active assignment.
   - Works in tandem with `AssetService.updateAssetAssignmentSnapshot()` for the dual-write pattern.
 * **`FileUploadService.ts`:**
-  - Manages file uploads to the `AssetAttachments` document library.
-  - Organizes files in folders by asset ID and category (`purchase`, `repairs`, `gifted`, `transfer`, `scrap`, `validation`, `photos`).
-  - Provides upload, list, and delete operations for attachment files.
-  - `listFiles(assetId)`: Queries the document library with `startswith(FileRef, path) and FSObjType eq 0` to enumerate all files for an asset (single API call, includes nested folders). Returns `IAttachment[]` sorted by `TimeCreated DESC`.
-  - `getFilesByCategory(assetId)`: Groups `listFiles()` result into a `Record<AttachmentCategory, IAttachment[]>`.
-  - `_inferCategory()`: Extracts category from file path via regex (`{assetId}/{category}/`), defaults to `other`.
+  - Manages file uploads to the `IT Assets` document library (flat category-folder structure).
+  - `upload(assetId, sub, file)`: Uploads a file to `IT Assets/{CategoryFolder}/` (or `IT Assets/Repair Reports/{assetId}/` for repairs). Returns `IUploadResult` with `serverRelativeUrl`, `absoluteUrl`, and `fileName`.
+  - `ensureFolder(assetId, sub)`: Creates category folder if needed; additionally creates `Repair Reports/{assetId}` subfolder for repair uploads.
+  - `listFiles(assetId)`: Queries `IT Assets/Repair Reports/{assetId}/` for repair files only. Non-repair attachments are discovered from URL fields on the `IT_Assets` record. Returns `IAttachment[]`.
+  - `getFilesByCategory(assetId)`: Groups `listFiles()` result by category.
+  - `deleteFile(serverRelativeUrl)`: Recycles a file to the SharePoint recycle bin.
+  - `getAbsoluteUrl(serverRelativeUrl)`: Converts a server-relative URL to an absolute URL.
   - `_getPreviewType()`: Maps file extension to `browser` (PDF/images/text/CSV), `office` (DOCX/XLSX/PPTX), or `download` (ZIP/unsupported).
 * **`PowerAutomateService.ts`:**
   - Dispatches non-blocking async POST JSON payloads to standard HTTP hook receivers mapped in the web part property pane.

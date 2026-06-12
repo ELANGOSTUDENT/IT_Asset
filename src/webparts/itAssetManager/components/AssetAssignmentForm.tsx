@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Spinner, SpinnerSize,
   MessageBar, MessageBarType,
@@ -76,15 +76,10 @@ const AssetAssignmentForm: React.FC<IAssetAssignmentFormProps> = ({
   const [form, setForm] = useState<IAssetAssignment>(
     existingAssignment
       ? { ...existingAssignment }
-      : emptyAssignment(asset.Title, asset.Id ?? 0, asset.SerialNumber)
+      : emptyAssignment(asset.Title, asset.Id ?? 0)
   );
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<AssignmentErrors>({});
-
-  // Auto-fill SerialNumber if asset changes
-  useEffect(() => {
-    if (!isEdit) setForm(f => ({ ...f, SerialNumber: asset.SerialNumber, Title: asset.Title }));
-  }, [asset.SerialNumber, asset.Title, isEdit]);
 
   const set = <K extends keyof IAssetAssignment>(key: K, value: IAssetAssignment[K]) =>
     setForm(f => ({ ...f, [key]: value }));
@@ -234,16 +229,6 @@ const AssetAssignmentForm: React.FC<IAssetAssignmentFormProps> = ({
               value={form.NextMaintenanceDate || ''}
               onChange={v => set('NextMaintenanceDate', v)}
               error={errors.NextMaintenanceDate}
-            />
-            <TextField
-              label="Maintenance Notes"
-              className={styles.fullWidth}
-              multiline
-              rows={3}
-              value={form.MaintenanceNotes || ''}
-              onChange={(_e, v) => set('MaintenanceNotes', v || '')}
-              placeholder="Maintenance schedule, service intervals, AMC details…"
-              maxLength={2000}
             />
           </div>
         </Section>

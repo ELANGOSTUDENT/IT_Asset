@@ -11,6 +11,8 @@ import { IItAssetManagerProps } from './IItAssetManagerProps';
 import { AssetService } from '../services/AssetService';
 import { AssetRepairService } from '../services/AssetRepairService';
 import { AssetAssignmentService } from '../services/AssetAssignmentService';
+import { AssetGiftedService } from '../services/AssetGiftedService';
+import { AssetScrapService } from '../services/AssetScrapService';
 import { FileUploadService } from '../services/FileUploadService';
 import { PowerAutomateService } from '../services/PowerAutomateService';
 import { spfi, SPFI } from '@pnp/sp';
@@ -46,11 +48,13 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
   const sp: SPFI = useMemo(() => spfi().using(SPFx(props.context)), [props.context]);
   const siteRelUrl: string = props.context.pageContext.web.serverRelativeUrl;
 
-  const svc       = useMemo(() => new AssetService(props.context), [props.context]);
-  const repairSvc = useMemo(() => new AssetRepairService(sp), [sp]);
-  const assignSvc = useMemo(() => new AssetAssignmentService(sp), [sp]);
-  const fileSvc   = useMemo(() => new FileUploadService(sp, siteRelUrl), [sp, siteRelUrl]);
-  const pa        = useMemo(() => new PowerAutomateService({
+  const svc        = useMemo(() => new AssetService(props.context), [props.context]);
+  const repairSvc  = useMemo(() => new AssetRepairService(sp), [sp]);
+  const assignSvc  = useMemo(() => new AssetAssignmentService(sp), [sp]);
+  const giftedSvc  = useMemo(() => new AssetGiftedService(sp), [sp]);
+  const scrapSvc   = useMemo(() => new AssetScrapService(sp), [sp]);
+  const fileSvc    = useMemo(() => new FileUploadService(sp, siteRelUrl), [sp, siteRelUrl]);
+  const pa         = useMemo(() => new PowerAutomateService({
     assignmentWebhook:     props.assignmentWebhook,
     lostDeviceWebhook:     props.lostDeviceWebhook,
     warrantyExpiryWebhook: props.warrantyExpiryWebhook,
@@ -112,7 +116,7 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
       await svc.changeStatus({
         assetId: asset.Title, itemId: asset.Id!,
         previousStatus: asset.Status, newStatus, notes,
-        changedBy: props.userDisplayName, changedByEmail: props.userEmail,
+        changedBy: props.userDisplayName,
       });
 
       const updatedAsset = { ...asset, Status: newStatus };
@@ -268,6 +272,8 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
           assetService={svc}
           repairService={repairSvc}
           assignmentService={assignSvc}
+          giftedService={giftedSvc}
+          scrapService={scrapSvc}
           fileService={fileSvc}
           currentUser={props.userDisplayName}
           onBack={backToList}

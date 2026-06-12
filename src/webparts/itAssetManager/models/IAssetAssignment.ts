@@ -2,7 +2,6 @@ export interface IAssetAssignment {
   Id?: number;
   Title: string;              // AssetId (FK)
   AssetItemId: number;        // IT_Assets list item Id
-  SerialNumber: string;
   AssignedTo: string;
   AssignedToEmail: string;
   Department: string;
@@ -10,15 +9,13 @@ export interface IAssetAssignment {
   DateOfAssignment: string;   // ISO date
   LastMaintenanceDate?: string;
   NextMaintenanceDate?: string;
-  MaintenanceNotes?: string;
   Remarks?: string;
   IsActive: boolean;
 }
 
-export const emptyAssignment = (assetId: string, assetItemId: number, serialNumber: string): IAssetAssignment => ({
+export const emptyAssignment = (assetId: string, assetItemId: number): IAssetAssignment => ({
   Title: assetId,
   AssetItemId: assetItemId,
-  SerialNumber: serialNumber,
   AssignedTo: '',
   AssignedToEmail: '',
   Department: '',

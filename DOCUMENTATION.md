@@ -715,16 +715,18 @@ After saving a new asset, a dialog asks "Assign now?" → Yes opens AssetAssignm
 - (* conditional sections only show when the asset has reached the relevant status)
 
 **File Attachments**
-- Files stored in a SharePoint document library named `AssetAttachments`
-- Folder structure: `AssetAttachments/{AssetID}/{subfolder}/{filename}`
-- Subfolders: `purchase`, `gifted`, `transfer`, `scrap`, `repairs/{timestamp}`
+- Files stored in a SharePoint document library named `IT Assets`
+- Flat category-folder structure. Only repair reports use a per-asset subfolder.
+- Folder mapping: `Purchase Invoices`, `Product Photos`, `Validation Reports`, `Transfer Documents`, `Gift Documents`, `Scrap Documents`, `Repair Reports/{AssetId}/`, `Other`
+- Non-repair attachment URLs are stored as fields on `IT_Assets` (`PurchaseBillUrl`, `GiftedAttachmentUrl`, `TransferAttachmentUrl`, `ScrapAttachmentUrl`)
+- Repair attachment URLs are stored on `Asset_Repairs.AttachmentUrl`
 
 **New SharePoint Lists**
 - `Asset_Assignments` — one row per assignment record (supports history of assignments via IsActive flag)
 - `Asset_Repairs` — one row per repair entry
 
-**New SharePoint Document Library**
-- `AssetAttachments` — document library for all asset lifecycle file attachments
+**SharePoint Document Library**
+- `IT Assets` — document library with category subfolders for all asset lifecycle file attachments
 
 **New IT_Assets columns** (added to existing list)
 - Procurement: PurchaseBillUrl, PurchaseBillName
@@ -954,12 +956,19 @@ Tracks every repair performed on an asset, supporting both warranty replacements
 * **RepairRemarks:** Optional multi-line notes.
 * **CreatedBy / CreatedDate:** Operator metadata.
 
-### 5. `AssetAttachments` (Document Library)
-File attachment library organized by asset ID and category. No URL columns are stored in the asset record; files are discovered at runtime by querying the folder hierarchy.
-* **Folder structure:** `AssetAttachments/{AssetID}/{category}/`
-* **Categories:** `purchase`, `repairs`, `gifted`, `transfer`, `scrap`, `validation`, `photos`
+### 5. `IT Assets` (Document Library)
+File attachment library organized by category folder. Repair reports are the only category with a per-asset subfolder.
+* **Folder structure:**
+  - `IT Assets/Purchase Invoices/` — purchase invoices; URL stored in `IT_Assets.PurchaseBillUrl`
+  - `IT Assets/Product Photos/` — product photos
+  - `IT Assets/Validation Reports/` — validation reports
+  - `IT Assets/Transfer Documents/` — transfer forms; URL stored in `IT_Assets.TransferAttachmentUrl`
+  - `IT Assets/Gift Documents/` — gift authorisation letters; URL stored in `IT_Assets.GiftedAttachmentUrl`
+  - `IT Assets/Scrap Documents/` — e-waste certificates; URL stored in `IT_Assets.ScrapAttachmentUrl`
+  - `IT Assets/Repair Reports/{AssetID}/` — repair documents; URL stored in `Asset_Repairs.AttachmentUrl`
+  - `IT Assets/Other/` — miscellaneous
 * **Managed by:** `FileUploadService.ts`
-* **Backward compatible:** Existing assets without document library entries continue to work.
+* **DEPRECATED — do not use:** `AssetAttachments/{AssetId}/category/` folder structure has been removed.
 
 ---
 
@@ -994,11 +1003,19 @@ Manages repair records in the `Asset_Repairs` SharePoint list.
 * **Attachment storage:** Repair attachments are stored in `AssetAttachments/{AssetID}/repairs/` via `FileUploadService` and the URL is stored on the repair record.
 
 ### `FileUploadService.ts`
-Manages document attachments in the `AssetAttachments` document library.
-* **Folder-per-AssetID structure:** Automatically creates `AssetAttachments/{AssetID}/{category}/` folders and uploads files.
-* **Supported categories:** `purchase`, `repairs`, `gifted`, `transfer`, `scrap`, `validation`, `photos`.
-* **API:** `uploadFile(assetId, category, file)`, `getFiles(assetId, category)`, `deleteFile(assetId, category, fileName)`.
-* **Backward compatible:** All existing attachment operations continue to work. New categories extend the same folder structure without breaking existing uploads.
+Manages document attachments in the `IT Assets` document library using a flat category-folder structure.
+* **Library:** `IT Assets` (document library, must be pre-created by the SharePoint administrator with the required subfolders).
+* **Folder mapping:**
+  - `purchase` → `IT Assets/Purchase Invoices/`
+  - `photos` → `IT Assets/Product Photos/`
+  - `validation` → `IT Assets/Validation Reports/`
+  - `transfer` → `IT Assets/Transfer Documents/`
+  - `gifted` → `IT Assets/Gift Documents/`
+  - `scrap` → `IT Assets/Scrap Documents/`
+  - `repairs` → `IT Assets/Repair Reports/{AssetId}/` (only category with per-asset subfolder)
+  - `other` → `IT Assets/Other/`
+* **API:** `upload(assetId, category, file)` — returns `{ serverRelativeUrl, absoluteUrl, fileName }`. `listFiles(assetId)` — returns repair files from `Repair Reports/{assetId}/`. `deleteFile(serverRelativeUrl)` — recycles file.
+* **URL storage:** Upload caller is responsible for saving the returned `serverRelativeUrl` to the appropriate SharePoint field (`PurchaseBillUrl`, `GiftedAttachmentUrl`, `TransferAttachmentUrl`, `ScrapAttachmentUrl`, or `Asset_Repairs.AttachmentUrl`).
 
 ### `PowerAutomateService.ts`
 An lightweight, standard webhook dispatch broker that fires async POST requests containing JSON schemas to configured flow endpoints when important milestones occur:
@@ -1107,7 +1124,7 @@ Before running `npm run bundle --ship`, ensure that:
 * **SP List Threshold Limit:** The default queries query up to 5000 items (the OData top ceiling limit). For organizations scaling beyond 5000 assets, indexed columns and cursor-based pagination will need to be implemented within `AssetService.ts`.
 * **People Picker Cache:** The User Search API searches only within members who have accessed the current SharePoint site collection at least once (i.e. site directory records).
 * **Direct Webhook Deliverability:** The application relies on immediate HTTP fetches to Power Automate. If a flow endpoint is disabled, the alert request fails silently in the background (UI is unaffected but alert isn't sent).
-* **AssetAttachments Library Dependency:** File uploads for receiving documents require the `AssetAttachments` document library. If the library is not provisioned (e.g., during manual redeployment), uploads will fail silently.
+* **IT Assets Library Dependency:** File uploads require the `IT Assets` document library to exist with its category subfolders pre-created by the SharePoint administrator (`Purchase Invoices`, `Product Photos`, `Validation Reports`, `Transfer Documents`, `Gift Documents`, `Scrap Documents`, `Repair Reports`, `Other`). The `ensureFolder` method attempts to create missing folders at upload time, but the library itself must already exist. If absent, uploads will fail with a REST error.
 * **List Restore — Column Internal Name Mismatch:** If the `IT_Assets` list is deleted and recreated through the SharePoint UI (rather than redeploying the SPFx package), column internal names may differ from what the code expects (e.g., `SerialNumber` is expected, but the UI creates `Serial_x0020_Number`). After a restore, verify all column internal names against `elements.xml` and recreate mismatched columns with the correct internal names.
 
 ### Future Opportunities:

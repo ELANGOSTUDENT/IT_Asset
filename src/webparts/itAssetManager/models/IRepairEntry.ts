@@ -6,9 +6,9 @@ export interface IRepairEntry {
   RepairVendor: string;
   IssueDescription: string;
   RepairCost: number;
-  RepairInvoiceNumber: string;
-  AttachmentUrl?: string;    // Server-relative URL in AssetAttachments library
-  AttachmentName?: string;
+  Resolution?: string;
+  Remarks?: string;
+  AttachmentUrl?: string;    // Server-relative URL in IT Assets / Repair Reports library
 }
 
 export interface IRepairEntryDraft {
@@ -16,7 +16,8 @@ export interface IRepairEntryDraft {
   RepairVendor: string;
   IssueDescription: string;
   RepairCost: number;
-  RepairInvoiceNumber: string;
+  Resolution: string;
+  Remarks: string;
   AttachmentFile?: File;
 }
 
@@ -25,5 +26,6 @@ export const emptyRepairDraft = (): IRepairEntryDraft => ({
   RepairVendor: '',
   IssueDescription: '',
   RepairCost: 0,
-  RepairInvoiceNumber: '',
+  Resolution: '',
+  Remarks: '',
 });

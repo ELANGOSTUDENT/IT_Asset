@@ -1,4 +1,4 @@
-export declare type AttachmentCategory = 'purchase' | 'repairs' | 'gifted' | 'transfer' | 'scrap' | 'validation' | 'photos' | 'other';
+export declare type AttachmentCategory = 'purchase' | 'repairs' | 'gifted' | 'scrap' | 'warranty' | 'other';
 export interface IAttachment {
     name: string;
     serverRelativeUrl: string;

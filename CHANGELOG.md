@@ -9,6 +9,38 @@ All changes to this project are documented here.
 
 ---
 
+## [v2.0.0] — 2026-06-12
+
+### Added
+- `models/IGiftedAsset.ts` — New model: `Title`, `AssetItemId`, `GiftedTo`, `GiftedDate`, `GiftAttachmentUrl`, `GiftRemarks`. Gifted data is now a separate `Asset_Gifted` list record instead of inline fields on `IT_Assets`.
+- `models/IScrapAsset.ts` — New model: `Title`, `AssetItemId`, `ScrapDate`, `ScrapVendor`, `ScrapAmount`, `ScrapAttachmentUrl`, `ScrapRemarks`. Scrap/disposal data is now a separate `Asset_Scrap` list record.
+- `services/AssetGiftedService.ts` — New service: `getGiftedByAsset()`, `addGifted()`, `updateGifted()` against `Asset_Gifted` list.
+- `services/AssetScrapService.ts` — New service: `getScrapByAsset()`, `addScrap()`, `updateScrap()` against `Asset_Scrap` list.
+- `AssetDetail.tsx` — Gifted card now loads live from `Asset_Gifted` (with Add/Edit dialog). Scrap card now loads live from `Asset_Scrap` (with Add/Edit dialog).
+- `IRepairEntry.ts` — Added `Resolution` and `Remarks` fields. Repair dialog in `AssetDetailsForm` now includes Resolution and Remarks inputs.
+
+### Changed
+- `models/IAsset.ts` — Removed 21 fields that are no longer in `IT_Assets`: `PurchaseBillName`, stock-condition fields (`DateAddedToStock`, `ConditionAtStockEntry`, `StockRemarks`), inline gifted fields (`GiftedTo`, `GiftedDate`, `GiftedAuthorisedBy`, `GiftedRemarks`, `GiftedAttachmentUrl`), all transfer fields (`TransferredFrom`, `TransferredTo`, `TransferDate`, `TransferReason`, `TransferAttachmentUrl`), and inline scrap fields (`ScrapDate`, `ScrapVendor`, `ScrapInvoiceNumber`, `ScrapPONumber`, `ScrapAmount`, `EWasteCertNumber`, `ScrapAttachmentUrl`). Removed `StockCondition` type.
+- `models/IAsset.ts` — Removed `Transferred` from `AssetStatus` union, `ASSET_STATUS_TRANSITIONS`, `STATUS_REQUIRES_NOTE`, and `STATUS_BADGE_COLORS`. `Active` can no longer transition to `Transferred`.
+- `models/IAssetAssignment.ts` — Removed `SerialNumber` and `MaintenanceNotes`. `emptyAssignment()` no longer takes a `serialNumber` parameter.
+- `models/IRepairEntry.ts` — Removed `RepairInvoiceNumber` and `AttachmentName`. Added `Resolution` and `Remarks`.
+- `models/IAssetHistory.ts` — Renamed `ChangedDate` → `ChangeDate`. Removed `Action`, `ChangedByEmail`, and `HistoryAction` type. Added `AssetItemId`.
+- `models/IAttachment.ts` — Removed `'transfer'` from `AttachmentCategory` union.
+- `services/AssetService.ts` — `ASSET_SELECT` trimmed to match new `IT_Assets` schema (removed all dropped fields). `changeStatus()` and `_logHistory()` now write `AssetItemId` and `ChangeDate` instead of `Action`, `ChangedByEmail`, `ChangedDate`. History queries updated to `orderBy('ChangeDate')`.
+- `services/AssetAssignmentService.ts` — `SELECT` array updated: removed `SerialNumber` and `MaintenanceNotes`.
+- `services/AssetRepairService.ts` — `SELECT` array updated: removed `RepairInvoiceNumber` and `AttachmentName`, added `Resolution` and `Remarks`.
+- `services/FileUploadService.ts` — Removed `'transfer': 'Transfer Documents'` from `CATEGORY_FOLDER`.
+- `components/AssetDetailsForm.tsx` — Removed Stock / In-Store Details section, Transfer of Ownership section, inline Gifted Details section, and inline Scrap / Disposal section. Removed file staging for gifted/transfer/scrap files. Repair dialog updated: removed Invoice Number field, added Resolution and Remarks fields.
+- `components/AssetDetail.tsx` — Removed Stock card, Transfer card. Gifted and Scrap cards now load data from their dedicated lists via `giftedService`/`scrapService` props. History timeline uses `ChangeDate` (renamed) and derives status-change vs. created from `PreviousStatus`/`NewStatus` presence (no longer relies on removed `Action` field). Maintenance section shows `Remarks` instead of removed `MaintenanceNotes`.
+- `components/AssetAttachmentSection.tsx` — `urlAttachments` memo now only surfaces `PurchaseBillUrl` (removed `GiftedAttachmentUrl`, `TransferAttachmentUrl`, `ScrapAttachmentUrl` — those attachments now live on their respective list records). Upload dialog no longer includes `Transfer Document` category option.
+- `components/AssetAssignmentForm.tsx` — Removed `SerialNumber` auto-fill effect. Removed Maintenance Notes field. Maintenance Schedule section shows date fields only.
+- `components/ItAssetManager.tsx` — Instantiates `AssetGiftedService` and `AssetScrapService`; passes both to `AssetDetail`. `handleStatusChange` no longer passes `changedByEmail` (removed from `changeStatus` signature).
+
+### Removed
+- All references to `Asset_Transfers` list — transfer functionality has been removed entirely from the schema and the application.
+
+---
+
 ## [v1.0.1] — 2026-06-03
 
 ### Changed
@@ -110,6 +142,45 @@ All changes to this project are documented here.
 - `FileUploadService.ts` — Changed field reference from `TimeCreated` to `Created` for document library item queries
 - `AssetService.ts` — Removed invalid `Action` field from history item selects; made `Action` optional in `IAssetHistory` model with `'Updated'` fallback display
 - `IAssetAssignment.ts` — Renamed `AssignmentRemarks` to `Remarks` to match deployed list schema
+
+---
+
+## [v1.10.3] — 2026-06-12
+
+### Fixed
+- `AssetAssignmentService.ts` — `updateAssignment()` now calls `stripMetadata()` before `.update()`. The edit-assignment path initialises form state from `{ ...existingAssignment }` (a fetched SharePoint item), so without this fix any edit-assignment save would throw `InvalidClientQueryException` the same way WarrantyExpiry did.
+- `AssetRepairService.ts` — `updateRepair()` now calls `stripMetadata()` before `.update()`. The method was not yet wired to a UI, but would have failed on first use.
+
+### Changed
+- `utils/SharePointUtils.ts` — **New file.** Extracted `stripMetadata()` and the `STRIP_ON_UPDATE` blocklist from `AssetService.ts` into a shared utility module so all three services (`AssetService`, `AssetAssignmentService`, `AssetRepairService`) import the same implementation. Eliminates the risk of one service being updated without the others.
+- `AssetService.ts` — Removed the local copy of `stripMetadata` / `STRIP_ON_UPDATE`; now imports from `utils/SharePointUtils.ts`.
+
+---
+
+## [v1.10.2] — 2026-06-12
+
+### Fixed
+- `AssetService.ts` — `updateAsset()` now strips OData annotations (`@odata.*`, `odata.*`), `__*` fields, and SharePoint system-managed columns (`Id`, `Title`, `Created`, `Modified`, `Author`, `Editor`, `SequenceNumber`, etc.) from the PATCH payload before calling `.update()`. This resolves `InvalidClientQueryException: A relative URI value Web/Lists(...)/Items(...) was specified in the payload` when saving WarrantyExpiry or any other field from an asset that was fetched and spread into the form state.
+- `AssetService.ts` — `getAssets()` now uses `.select(...ASSET_SELECT)` — prevents OData envelope fields from entering the `IAsset` objects in the first place (source-level fix; `stripMetadata` in `updateAsset` remains as a defensive safety net).
+- `AssetService.ts` — `getAssetById()` now uses `.select(...ASSET_SELECT)` for the same reason.
+
+---
+
+## [v1.10.1] — 2026-06-12
+
+### Fixed
+- `FileUploadService.ts` — Removed dependency on deprecated `AssetAttachments/{AssetId}/category/` folder structure. Library target changed from `AssetAttachments` to `IT Assets`. Folder mapping now follows the approved flat structure: `Purchase Invoices`, `Product Photos`, `Validation Reports`, `Transfer Documents`, `Gift Documents`, `Scrap Documents`, and `Repair Reports/{AssetId}/` (only repairs retain a per-asset subfolder). This resolves the `"AssetAttachments/IN-CHN-26-LAP-0002/purchase not found"` upload error.
+- `FileUploadService.ts` — `listFiles(assetId)` now queries only `IT Assets/Repair Reports/{assetId}/`, since non-repair attachment URLs are stored as fields on the `IT_Assets` record. Errors during the query now return an empty array instead of propagating (graceful degradation).
+- `FileUploadService.ts` — `IUploadResult` now includes `absoluteUrl` alongside `serverRelativeUrl`.
+- `FileUploadService.ts` — `ensureFolder` creates the category folder first, then the per-asset subfolder for repairs (two-step creation required because SharePoint does not create parent folders recursively).
+- `AssetDetailsForm.tsx` — Repair file upload sub-path changed from `repairs/${Date.now()}` (invalid path) to `'repairs'` (valid `AttachmentCategory`). Filename is prefixed with `Date.now()` to prevent collisions in the shared `Repair Reports/{assetId}/` folder. Original filename is preserved in `AttachmentName`.
+- `AssetDetailsForm.tsx` — `maybeUpload` helper now typed with `AttachmentCategory` instead of `string`.
+- `AssetAttachmentSection.tsx` — Redesigned to show attachments from three sources: (1) URL fields on the `IT_Assets` record (`PurchaseBillUrl`, `GiftedAttachmentUrl`, `TransferAttachmentUrl`, `ScrapAttachmentUrl`), (2) `AttachmentUrl` fields on `Asset_Repairs` list entries, (3) files fetched from `IT Assets/Repair Reports/{assetId}/` in the document library. Duplicate URLs are de-duplicated. Delete is restricted to library-sourced files; URL-field attachments are managed via the Edit Asset form.
+- `AssetDetail.tsx` — `AssetAttachmentSection` now receives `asset` and `repairs` props required by the redesigned component.
+
+### Changed
+- `AssetAttachmentSection.tsx` — Props updated: added `asset: IAsset` and `repairs: IRepairEntry[]`. Upload dialog default category changed from `other` to `repairs`.
+- `AssetAttachmentSection.tsx` — Category badge labels now use human-readable names (e.g., "Purchase Invoice" instead of "purchase").
 
 ---
 

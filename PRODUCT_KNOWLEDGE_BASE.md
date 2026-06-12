@@ -153,11 +153,22 @@
     | ChangedDate | `ChangedDate` | DateTime |
     | HistoryNotes | `HistoryNotes` | Note |
 
-### 2.5. Library: AssetAttachments
-*   **Internal Name**: `AssetAttachments`
+### 2.5. Library: IT Assets
+*   **Display Name**: `IT Assets`
 *   **Template Type**: 101 (Document Library)
-*   **Folder Structure**: `/[AssetID]/[Category]/[File]`
-*   **Categories**: `purchase`, `repair`, `gifted`, `transfer`, `scrap`.
+*   **Folder Structure**: Flat category-based. Only repair reports use a per-asset subfolder.
+*   **Folders and URL field mapping**:
+    | Folder | Stores URL in |
+    | :--- | :--- |
+    | `Purchase Invoices` | `IT_Assets.PurchaseBillUrl` |
+    | `Product Photos` | — |
+    | `Validation Reports` | — |
+    | `Transfer Documents` | `IT_Assets.TransferAttachmentUrl` |
+    | `Gift Documents` | `IT_Assets.GiftedAttachmentUrl` |
+    | `Scrap Documents` | `IT_Assets.ScrapAttachmentUrl` |
+    | `Repair Reports/{AssetId}/` | `Asset_Repairs.AttachmentUrl` |
+    | `Other` | — |
+*   **DEPRECATED**: `AssetAttachments/{AssetId}/category/` — this structure is no longer used. Do not recreate it.
 
 ---
 
@@ -256,17 +267,16 @@
 
 ### 4.4. FileUploadService
 *   **File**: `services/FileUploadService.ts`
-*   **SP Dependencies**: `AssetAttachments` library.
+*   **SP Dependencies**: `IT Assets` document library.
 *   **Called By**: `AssetDetailsForm`, `AssetAttachmentSection`.
 *   **Methods**:
-    *   `ensureFolder(assetId, sub)`: Creates `[AssetID]/[Category]` folder structure if it does not exist.
-    *   `upload(assetId, sub, file)`: Uploads a file to the appropriate folder, returns server-relative URL and filename.
-    *   `deleteFile(serverRelativeUrl)`: Sends a file to the recycle bin.
-    *   `getAbsoluteUrl(serverRelativeUrl)`: Converts a server-relative URL to an absolute URL.
-    *   `listFiles(assetId)`: Queries document library with `startswith(FileRef, path) and FSObjType eq 0`, returns `IAttachment[]` sorted by `TimeCreated DESC`. Single API call — includes nested folders.
+    *   `upload(assetId, sub, file)`: Uploads a file to `IT Assets/{CategoryFolder}/` (or `IT Assets/Repair Reports/{assetId}/` for `sub='repairs'`). Returns `IUploadResult` with `serverRelativeUrl`, `absoluteUrl`, `fileName`.
+    *   `ensureFolder(assetId, sub)`: Creates the category folder if needed; also creates `Repair Reports/{assetId}` subfolder for repairs (two-step — SharePoint does not recursively create parent folders).
+    *   `deleteFile(serverRelativeUrl)`: Recycles a file to the SharePoint recycle bin.
+    *   `getAbsoluteUrl(serverRelativeUrl)`: Converts a server-relative URL to an absolute URL using `window.location.origin`.
+    *   `listFiles(assetId)`: Queries `IT Assets/Repair Reports/{assetId}/` for repair files only. Returns `IAttachment[]` (category always `'repairs'`). Returns empty array on query error.
     *   `getFilesByCategory(assetId)`: Groups `listFiles()` result by category as a `Record<AttachmentCategory, IAttachment[]>`.
-    *   `_inferCategory(path, assetId)`: Extracts folder category from path via regex, defaults to `other`.
-    *   `_getPreviewType(fileName)`: Maps extension to `browser` (pdf/png/jpg/jpeg/gif/svg/webp/bmp/tiff/txt/csv), `office` (doc/docx/xls/xlsx/ppt/pptx), or `download` (zip/rar/other).
+    *   `_getPreviewType(fileName)`: Maps extension to `browser`, `office`, or `download`.
 
 ### 4.5. PowerAutomateService
 *   **File**: `services/PowerAutomateService.ts`
@@ -340,9 +350,9 @@
 *   **Helper**: `emptyRepairDraft()` returns a blank draft.
 
 ### 6.5. IAttachment (`models/IAttachment.ts`)
-*   **Purpose**: Attachment model for files in the `AssetAttachments` document library.
+*   **Purpose**: Attachment model for files in the `IT Assets` document library, and for URL-field-based attachments derived from `IT_Assets` and `Asset_Repairs` records.
 *   **Fields**: `name`, `serverRelativeUrl`, `absoluteUrl`, `downloadUrl`, `category` (AttachmentCategory), `timeCreated`, `fileSize`, `previewType` (`browser` / `office` / `download`).
-*   **AttachmentCategory**: `purchase | repairs | gifted | transfer | scrap | validation | photos | other`. Inferred from folder path.
+*   **AttachmentCategory**: `purchase | repairs | gifted | transfer | scrap | validation | photos | other`. For library files, always `'repairs'`. For URL-field-based records, category is set from the source field context.
 
 ---
 

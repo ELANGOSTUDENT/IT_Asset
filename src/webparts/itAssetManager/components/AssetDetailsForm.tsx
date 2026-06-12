@@ -11,16 +11,17 @@ import {
 import {
   ArrowLeftRegular, AddRegular, SaveRegular, DeleteRegular,
   AttachRegular, TagRegular, WrenchRegular, MoneyRegular,
-  DocumentRegular, ArrowSwapRegular, BoxRegular, LeafThreeRegular,
+  DocumentRegular,
 } from '@fluentui/react-icons';
 import {
   IAsset, AssetType, AssetStatus, AssetStatus as AS,
-  ASSET_TYPE_LABELS, StockCondition, DEPT_OPTIONS, LOCATION_OPTIONS,
+  ASSET_TYPE_LABELS, DEPT_OPTIONS, LOCATION_OPTIONS,
 } from '../models/IAsset';
 import { IRepairEntry, IRepairEntryDraft, emptyRepairDraft } from '../models/IRepairEntry';
 import { AssetService } from '../services/AssetService';
 import { AssetRepairService } from '../services/AssetRepairService';
 import { FileUploadService, IUploadResult } from '../services/FileUploadService';
+import { AttachmentCategory } from '../models/IAttachment';
 import { AssetIdGenerator } from '../utils/AssetIdGenerator';
 import styles from './AssetDetailsForm.module.scss';
 
@@ -78,17 +79,16 @@ const DateField: React.FC<IDateFieldProps> = ({ label, value, onChange, error, d
 interface IFileFieldProps {
   label: string;
   existingUrl?: string;
-  existingName?: string;
   onFileSelected: (file: File | null) => void;
 }
 
-const FileField: React.FC<IFileFieldProps> = ({ label, existingUrl, existingName, onFileSelected }) => (
+const FileField: React.FC<IFileFieldProps> = ({ label, existingUrl, onFileSelected }) => (
   <div>
     <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>{label}</label>
     <div className={styles.fileField}>
       <label className={styles.fileLabel}>
         <AttachRegular />
-        <span>{existingName || 'Choose file…'}</span>
+        <span>Choose file…</span>
         <input
           type="file"
           style={{ display: 'none' }}
@@ -155,6 +155,14 @@ const RepairDialog: React.FC<IRepairDialogProps> = ({ open, draft, saving, onDra
           onChange={(_e, v) => set('IssueDescription', v || '')}
         />
         <TextField
+          label="Resolution"
+          className={styles.fullWidth}
+          multiline
+          rows={2}
+          value={draft.Resolution}
+          onChange={(_e, v) => set('Resolution', v || '')}
+        />
+        <TextField
           label="Repair Cost (INR)"
           type="number"
           prefix="₹"
@@ -162,9 +170,9 @@ const RepairDialog: React.FC<IRepairDialogProps> = ({ open, draft, saving, onDra
           onChange={(_e, v) => set('RepairCost', parseFloat(v || '0'))}
         />
         <TextField
-          label="Invoice Number"
-          value={draft.RepairInvoiceNumber}
-          onChange={(_e, v) => set('RepairInvoiceNumber', v || '')}
+          label="Remarks"
+          value={draft.Remarks}
+          onChange={(_e, v) => set('Remarks', v || '')}
         />
         <div className={styles.fullWidth}>
           <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Attachment</label>
@@ -201,12 +209,6 @@ const INITIAL_STATUS_OPTIONS: { value: AssetStatus; label: string }[] = [
   { value: 'Stock',    label: 'Stock' },
 ];
 
-const CONDITION_OPTIONS: { value: StockCondition; label: string }[] = [
-  { value: 'Good',        label: 'Good' },
-  { value: 'Refurbished', label: 'Refurbished' },
-  { value: 'Damaged',     label: 'Damaged' },
-];
-
 const empty = (): Partial<IAsset> => ({
   SerialNumber: '', Model: '', Vendor: '', PONumber: '', InvoiceNumber: '',
   Cost: 0, PurchaseDate: '', WarrantyExpiry: '', Remarks: '',
@@ -231,9 +233,6 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
 
   // File staging
   const [purchaseBillFile, setPurchaseBillFile] = useState<File | null>(null);
-  const [giftedFile, setGiftedFile] = useState<File | null>(null);
-  const [transferFile, setTransferFile] = useState<File | null>(null);
-  const [scrapFile, setScrapFile] = useState<File | null>(null);
 
   // Repair dialog
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
@@ -292,7 +291,7 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
   // ── File upload helper ───────────────────────────────────────────────────────
 
   const maybeUpload = async (
-    assetId: string, sub: string, file: File | null
+    assetId: string, sub: AttachmentCategory, file: File | null
   ): Promise<IUploadResult | null> => {
     if (!file) return null;
     return fileService.upload(assetId, sub, file);
@@ -307,18 +306,10 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
       const assetId = isEdit ? asset!.Title : previewId;
       if (!assetId) { setErrors({ form: 'Asset ID not ready.' }); return; }
 
-      const [billResult, giftResult, transferResult, scrapResult] = await Promise.all([
-        maybeUpload(assetId, 'purchase', purchaseBillFile),
-        maybeUpload(assetId, 'gifted', giftedFile),
-        maybeUpload(assetId, 'transfer', transferFile),
-        maybeUpload(assetId, 'scrap', scrapFile),
-      ]);
+      const billResult = await maybeUpload(assetId, 'purchase', purchaseBillFile);
 
       const payload: Partial<IAsset> = { ...form };
-      if (billResult)     { payload.PurchaseBillUrl = billResult.serverRelativeUrl; payload.PurchaseBillName = billResult.fileName; }
-      if (giftResult)     { payload.GiftedAttachmentUrl = giftResult.serverRelativeUrl; }
-      if (transferResult) { payload.TransferAttachmentUrl = transferResult.serverRelativeUrl; }
-      if (scrapResult)    { payload.ScrapAttachmentUrl = scrapResult.serverRelativeUrl; }
+      if (billResult) { payload.PurchaseBillUrl = billResult.serverRelativeUrl; }
 
       await onSave(payload as IAsset);
     } catch {
@@ -336,11 +327,16 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
     setSavingRepair(true);
     try {
       let attachmentUrl: string | undefined;
-      let attachmentName: string | undefined;
       if (repairDraft.AttachmentFile) {
-        const r = await fileService.upload(asset.Title, `repairs/${Date.now()}`, repairDraft.AttachmentFile);
+        // Prefix with timestamp to prevent filename collisions in the shared repair folder
+        const originalName = repairDraft.AttachmentFile.name;
+        const uniqueFile = new File(
+          [repairDraft.AttachmentFile],
+          `${Date.now()}_${originalName}`,
+          { type: repairDraft.AttachmentFile.type }
+        );
+        const r = await fileService.upload(asset.Title, 'repairs', uniqueFile);
         attachmentUrl = r.serverRelativeUrl;
-        attachmentName = r.fileName;
       }
       const entry = await repairService.addRepair({
         Title: asset.Title,
@@ -349,9 +345,9 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
         RepairVendor: repairDraft.RepairVendor,
         IssueDescription: repairDraft.IssueDescription,
         RepairCost: repairDraft.RepairCost,
-        RepairInvoiceNumber: repairDraft.RepairInvoiceNumber,
+        Resolution: repairDraft.Resolution || undefined,
+        Remarks: repairDraft.Remarks || undefined,
         AttachmentUrl: attachmentUrl,
-        AttachmentName: attachmentName,
       });
       setRepairs(prev => [entry, ...prev]);
       setRepairDraft(emptyRepairDraft());
@@ -365,13 +361,6 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
     await repairService.deleteRepair(id);
     setRepairs(prev => prev.filter(r => r.Id !== id));
   };
-
-  // ── Derived helpers ───────────────────────────────────────────────────────────
-
-  const status = form.Status as AssetStatus;
-  const showGifted    = status === 'Gifted';
-  const showTransfer  = status === 'Transferred';
-  const showScrap     = status === 'Scrapped' || status === 'Disposed';
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -511,33 +500,7 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
             <FileField
               label="Purchase Bill / Invoice"
               existingUrl={form.PurchaseBillUrl}
-              existingName={form.PurchaseBillName}
               onFileSelected={setPurchaseBillFile}
-            />
-          </div>
-        </Section>
-
-        {/* ── Stock / In-Store Details ── */}
-        <Section title="Stock / In-Store Details" icon={<BoxRegular />}>
-          <div className={styles.grid}>
-            <DateField label="Date Added to Stock" value={form.DateAddedToStock || ''} onChange={v => set('DateAddedToStock', v)} />
-            <Dropdown
-              label="Condition at Stock Entry"
-              selectedKey={form.ConditionAtStockEntry || ''}
-              options={[
-                { key: '', text: 'Select condition…' },
-                ...CONDITION_OPTIONS.map(o => ({ key: o.value, text: o.label })),
-              ]}
-              onChange={(_e, option) => set('ConditionAtStockEntry', option?.key as StockCondition)}
-            />
-            <TextField
-              label="Stock Remarks"
-              className={styles.fullWidth}
-              multiline
-              rows={2}
-              value={form.StockRemarks || ''}
-              onChange={(_e, v) => set('StockRemarks', v || '')}
-              maxLength={1000}
             />
           </div>
         </Section>
@@ -562,7 +525,7 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         {r.AttachmentUrl && (
                           <a href={r.AttachmentUrl} target="_blank" rel="noreferrer" className={styles.fileLink}>
-                            <AttachRegular /> Invoice
+                            <AttachRegular /> Attachment
                           </a>
                         )}
                         <IconButton
@@ -572,10 +535,14 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
                       </div>
                     </div>
                     <span style={{ fontSize: 12 }}>{r.IssueDescription}</span>
+                    {r.Resolution && (
+                      <span style={{ fontSize: 12, color: '#107c10', display: 'block' }}>
+                        Resolution: {r.Resolution}
+                      </span>
+                    )}
                     {r.RepairCost > 0 && (
                       <span style={{ fontSize: 12, color: '#707070', display: 'block' }}>
                         Cost: ₹{r.RepairCost.toLocaleString('en-IN')}
-                        {r.RepairInvoiceNumber && ` · Invoice: ${r.RepairInvoiceNumber}`}
                       </span>
                     )}
                     <Separator />
@@ -590,111 +557,6 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
                 </DefaultButton>
               </>
             )}
-          </Section>
-        )}
-
-        {/* ── Gifted Details (conditional) ── */}
-        {showGifted && (
-          <Section title="Gifted Details" icon={<DocumentRegular />}>
-            <div className={styles.grid}>
-              <TextField
-                label="Gifted To"
-                value={form.GiftedTo || ''}
-                onChange={(_e, v) => set('GiftedTo', v || '')}
-              />
-              <DateField label="Gifted Date" value={form.GiftedDate || ''} onChange={v => set('GiftedDate', v)} />
-              <TextField
-                label="Authorised By"
-                value={form.GiftedAuthorisedBy || ''}
-                onChange={(_e, v) => set('GiftedAuthorisedBy', v || '')}
-              />
-              <TextField
-                label="Remarks"
-                className={styles.fullWidth}
-                multiline
-                rows={2}
-                value={form.GiftedRemarks || ''}
-                onChange={(_e, v) => set('GiftedRemarks', v || '')}
-              />
-              <FileField
-                label="Authorisation Letter"
-                existingUrl={form.GiftedAttachmentUrl}
-                onFileSelected={setGiftedFile}
-              />
-            </div>
-          </Section>
-        )}
-
-        {/* ── Transfer of Ownership (conditional) ── */}
-        {showTransfer && (
-          <Section title="Transfer of Ownership" icon={<ArrowSwapRegular />}>
-            <div className={styles.grid}>
-              <TextField
-                label="Transferred From"
-                value={form.TransferredFrom || ''}
-                onChange={(_e, v) => set('TransferredFrom', v || '')}
-              />
-              <TextField
-                label="Transferred To"
-                value={form.TransferredTo || ''}
-                onChange={(_e, v) => set('TransferredTo', v || '')}
-              />
-              <DateField label="Transfer Date" value={form.TransferDate || ''} onChange={v => set('TransferDate', v)} />
-              <TextField
-                label="Reason"
-                className={styles.fullWidth}
-                multiline
-                rows={2}
-                value={form.TransferReason || ''}
-                onChange={(_e, v) => set('TransferReason', v || '')}
-              />
-              <FileField
-                label="Transfer Letter / Form"
-                existingUrl={form.TransferAttachmentUrl}
-                onFileSelected={setTransferFile}
-              />
-            </div>
-          </Section>
-        )}
-
-        {/* ── Scrap / Disposal Details (conditional) ── */}
-        {showScrap && (
-          <Section title="Scrap / Disposal Details" icon={<LeafThreeRegular />}>
-            <div className={styles.grid}>
-              <DateField label="Scrap Date" value={form.ScrapDate || ''} onChange={v => set('ScrapDate', v)} />
-              <TextField
-                label="Scrap Vendor"
-                value={form.ScrapVendor || ''}
-                onChange={(_e, v) => set('ScrapVendor', v || '')}
-              />
-              <TextField
-                label="Scrap Invoice Number"
-                value={form.ScrapInvoiceNumber || ''}
-                onChange={(_e, v) => set('ScrapInvoiceNumber', v || '')}
-              />
-              <TextField
-                label="Scrap PO Number"
-                value={form.ScrapPONumber || ''}
-                onChange={(_e, v) => set('ScrapPONumber', v || '')}
-              />
-              <TextField
-                label="Scrap Amount (INR)"
-                type="number"
-                prefix="₹"
-                value={String(form.ScrapAmount ?? 0)}
-                onChange={(_e, v) => set('ScrapAmount', parseFloat(v || '0'))}
-              />
-              <TextField
-                label="E-Waste Certificate Number"
-                value={form.EWasteCertNumber || ''}
-                onChange={(_e, v) => set('EWasteCertNumber', v || '')}
-              />
-              <FileField
-                label="E-Waste Certificate"
-                existingUrl={form.ScrapAttachmentUrl}
-                onFileSelected={setScrapFile}
-              />
-            </div>
           </Section>
         )}
 

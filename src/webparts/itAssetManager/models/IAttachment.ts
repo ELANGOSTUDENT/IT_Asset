@@ -2,10 +2,8 @@ export type AttachmentCategory =
   | 'purchase'
   | 'repairs'
   | 'gifted'
-  | 'transfer'
   | 'scrap'
-  | 'validation'
-  | 'photos'
+  | 'warranty'
   | 'other';
 
 export interface IAttachment {

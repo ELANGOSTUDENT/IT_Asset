@@ -8,6 +8,7 @@ import { WebPartContext } from '@microsoft/sp-webpart-base';
 import { IAsset, AssetStatus } from '../models/IAsset';
 import { IAssetHistory } from '../models/IAssetHistory';
 import { AssetIdGenerator } from '../utils/AssetIdGenerator';
+import { stripMetadata } from '../utils/SharePointUtils';
 
 const ASSETS_LIST = 'IT_Assets';
 const HISTORY_LIST = 'Asset_History';
@@ -18,16 +19,7 @@ const ASSET_SELECT = [
   'Department', 'AssetLocation', 'Country', 'OfficeCode', 'Status', 'AssetType',
   'Remarks', 'SequenceNumber', 'Created', 'Modified',
   // Procurement attachment
-  'PurchaseBillUrl', 'PurchaseBillName',
-  // Stock details
-  'DateAddedToStock', 'ConditionAtStockEntry', 'StockRemarks',
-  // Gifted details
-  'GiftedTo', 'GiftedDate', 'GiftedAuthorisedBy', 'GiftedRemarks', 'GiftedAttachmentUrl',
-  // Transfer details
-  'TransferredFrom', 'TransferredTo', 'TransferDate', 'TransferReason', 'TransferAttachmentUrl',
-  // Scrap / dispose details
-  'ScrapDate', 'ScrapVendor', 'ScrapInvoiceNumber', 'ScrapPONumber',
-  'ScrapAmount', 'EWasteCertNumber', 'ScrapAttachmentUrl',
+  'PurchaseBillUrl',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,7 +43,8 @@ export class AssetService {
   async getAssets(): Promise<IAsset[]> {
     const items = await this._sp.web.lists
       .getByTitle(ASSETS_LIST)
-      .items.top(5000)
+      .items.select(...ASSET_SELECT)
+      .top(5000)
       .orderBy('Created', false)();
     return items.map(mapAsset);
   }
@@ -59,7 +52,8 @@ export class AssetService {
   async getAssetById(id: number): Promise<IAsset> {
     const item = await this._sp.web.lists
       .getByTitle(ASSETS_LIST)
-      .items.getById(id)();
+      .items.getById(id)
+      .select(...ASSET_SELECT)();
     return mapAsset(item);
   }
 
@@ -85,10 +79,10 @@ export class AssetService {
 
     await this._logHistory({
       Title: assetId,
-      Action: 'Created',
+      AssetItemId: result.data.Id,
       NewStatus: asset.Status,
       ChangedBy: 'System',
-      ChangedDate: new Date().toISOString(),
+      ChangeDate: new Date().toISOString(),
       HistoryNotes: 'Asset created and entered into the system.',
     });
 
@@ -96,7 +90,9 @@ export class AssetService {
   }
 
   async updateAsset(id: number, changes: Partial<IAsset>): Promise<void> {
-    await this._sp.web.lists.getByTitle(ASSETS_LIST).items.getById(id).update(changes);
+    // Strip odata annotations and SP system fields before sending to avoid InvalidClientQueryException
+    const payload = stripMetadata(changes as Record<string, unknown>);
+    await this._sp.web.lists.getByTitle(ASSETS_LIST).items.getById(id).update(payload);
   }
 
   async deleteAsset(id: number): Promise<void> {
@@ -114,20 +110,18 @@ export class AssetService {
     newStatus: AssetStatus;
     notes: string;
     changedBy: string;
-    changedByEmail: string;
     /** Additional field updates (e.g. AssignedTo on Active) */
     extraFields?: Partial<IAsset>;
   }): Promise<void> {
-    const { assetId, itemId, previousStatus, newStatus, notes, changedBy, changedByEmail, extraFields } = params;
+    const { assetId, itemId, previousStatus, newStatus, notes, changedBy, extraFields } = params;
     await this.updateAsset(itemId, { Status: newStatus, ...extraFields });
     await this._logHistory({
       Title: assetId,
-      Action: 'StatusChanged',
+      AssetItemId: itemId,
       PreviousStatus: previousStatus,
       NewStatus: newStatus,
       ChangedBy: changedBy,
-      ChangedByEmail: changedByEmail,
-      ChangedDate: new Date().toISOString(),
+      ChangeDate: new Date().toISOString(),
       HistoryNotes: notes,
     });
   }
@@ -140,8 +134,8 @@ export class AssetService {
     return this._sp.web.lists
       .getByTitle(HISTORY_LIST)
       .items.filter(`Title eq '${assetId}'`)
-      .select('Id', 'Title', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangedByEmail', 'ChangedDate', 'HistoryNotes')
-      .orderBy('ChangedDate', false)
+      .select('Id', 'Title', 'AssetItemId', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangeDate', 'HistoryNotes')
+      .orderBy('ChangeDate', false)
       .top(200)();
   }
 
@@ -204,8 +198,8 @@ export class AssetService {
 
   async getRecentHistory(limit: number = 10): Promise<IAssetHistory[]> {
     return this._sp.web.lists.getByTitle(HISTORY_LIST)
-      .items.select('Id', 'Title', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangedDate', 'HistoryNotes')
-      .orderBy('ChangedDate', false)
+      .items.select('Id', 'Title', 'AssetItemId', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangeDate', 'HistoryNotes')
+      .orderBy('ChangeDate', false)
       .top(limit)();
   }
 

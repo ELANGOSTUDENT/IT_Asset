@@ -3,15 +3,16 @@ import '@pnp/sp/webs';
 import '@pnp/sp/lists';
 import '@pnp/sp/items';
 import { IAssetAssignment } from '../models/IAssetAssignment';
+import { stripMetadata } from '../utils/SharePointUtils';
 
 const ASSIGNMENTS_LIST = 'Asset_Assignments';
 const ASSETS_LIST = 'IT_Assets';
 
 const SELECT = [
-  'Id', 'Title', 'AssetItemId', 'SerialNumber',
+  'Id', 'Title', 'AssetItemId',
   'AssignedTo', 'AssignedToEmail', 'Department', 'AssetLocation',
   'DateOfAssignment', 'LastMaintenanceDate', 'NextMaintenanceDate',
-   'MaintenanceNotes', 'Remarks', 'IsActive',
+  'Remarks', 'IsActive',
 ];
 
 export class AssetAssignmentService {
@@ -47,10 +48,11 @@ export class AssetAssignmentService {
   }
 
   async updateAssignment(id: number, changes: Partial<IAssetAssignment>): Promise<void> {
+    const payload = stripMetadata(changes as Record<string, unknown>);
     await this._sp.web.lists
       .getByTitle(ASSIGNMENTS_LIST)
       .items.getById(id)
-      .update(changes);
+      .update(payload);
     if (changes.AssetItemId) {
       await this._syncITAssets(changes.AssetItemId, changes);
     }

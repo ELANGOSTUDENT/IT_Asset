@@ -21,7 +21,6 @@ export declare class AssetService {
         newStatus: AssetStatus;
         notes: string;
         changedBy: string;
-        changedByEmail: string;
         /** Additional field updates (e.g. AssignedTo on Active) */
         extraFields?: Partial<IAsset>;
     }): Promise<void>;

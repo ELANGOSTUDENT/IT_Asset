@@ -6,16 +6,17 @@ export interface IRepairEntry {
     RepairVendor: string;
     IssueDescription: string;
     RepairCost: number;
-    RepairInvoiceNumber: string;
+    Resolution?: string;
+    Remarks?: string;
     AttachmentUrl?: string;
-    AttachmentName?: string;
 }
 export interface IRepairEntryDraft {
     RepairDate: string;
     RepairVendor: string;
     IssueDescription: string;
     RepairCost: number;
-    RepairInvoiceNumber: string;
+    Resolution: string;
+    Remarks: string;
     AttachmentFile?: File;
 }
 export declare const emptyRepairDraft: () => IRepairEntryDraft;

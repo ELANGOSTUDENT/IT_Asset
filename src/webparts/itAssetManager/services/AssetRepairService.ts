@@ -3,13 +3,13 @@ import '@pnp/sp/webs';
 import '@pnp/sp/lists';
 import '@pnp/sp/items';
 import { IRepairEntry } from '../models/IRepairEntry';
+import { stripMetadata } from '../utils/SharePointUtils';
 
 const LIST = 'Asset_Repairs';
 
 const SELECT = [
   'Id', 'Title', 'AssetItemId', 'RepairDate', 'RepairVendor',
-  'IssueDescription', 'RepairCost', 'RepairInvoiceNumber',
-  'AttachmentUrl', 'AttachmentName',
+  'IssueDescription', 'RepairCost', 'Resolution', 'Remarks', 'AttachmentUrl',
 ];
 
 export class AssetRepairService {
@@ -32,10 +32,11 @@ export class AssetRepairService {
   }
 
   async updateRepair(id: number, changes: Partial<IRepairEntry>): Promise<void> {
+    const payload = stripMetadata(changes as Record<string, unknown>);
     await this._sp.web.lists
       .getByTitle(LIST)
       .items.getById(id)
-      .update(changes);
+      .update(payload);
   }
 
   async deleteRepair(id: number): Promise<void> {
