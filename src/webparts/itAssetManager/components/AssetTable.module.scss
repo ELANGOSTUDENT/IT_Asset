@@ -1,156 +1,301 @@
 @import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
 
-$shadow-card: 0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.1);
-$radius: 6px;
+// ══════════════════════════════════════════════════════════════════════════════
+// Hybrid Executive — Design Tokens
+// ══════════════════════════════════════════════════════════════════════════════
+$blue:      #2563eb;
+$cyan:      #0284c7;
+$text-dark: #0f172a;
+$text-mid:  #334155;
+$text-muted: #64748b;
+$border:    #e2e8f0;
+$bg-white:  #ffffff;
+$bg-bar:    #f8fafc;
+$shadow-bar: 0 1px 4px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+$shadow-card: 0 1px 3px rgba(0,0,0,.06), 0 4px 20px rgba(0,0,0,.07);
+$r:  14px;
+$r-sm: 8px;
+$t:  0.15s ease;
 
+// ── Animation ─────────────────────────────────────────────────────────────────
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fadeIn {
+  animation: fadeInUp 0.28s ease both;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Root — light surface
+// ══════════════════════════════════════════════════════════════════════════════
 .root {
   display: flex;
   flex-direction: column;
   gap: 0;
+
+  :global(.ms-Button--default) {
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+  }
+
+  :global(.ms-Button--icon i) {
+    color: $text-muted;
+  }
 }
 
-// ── Command bar sits on white with subtle bottom border ───────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Command bar — white top strip
+// ══════════════════════════════════════════════════════════════════════════════
 :global(.ms-CommandBar) {
-  background: #fff;
-  border-bottom: 1px solid $ms-color-neutralLight;
-  padding: 0 8px;
-  box-shadow: $shadow-card;
+  background: $bg-white !important;
+  border-bottom: 1px solid $border;
+  padding: 2px 12px;
+  box-shadow: $shadow-bar;
 }
 
-// ── Filter bar ────────────────────────────────────────────────────────────────
+:global(.ms-CommandBarItem-link) {
+  background: transparent !important;
+  color: $text-mid !important;
+  border-radius: 7px !important;
+  font-weight: 500 !important;
+
+  &:hover {
+    background: #eff6ff !important;
+    color: $blue !important;
+  }
+}
+
+:global(.ms-CommandBarItem-icon i) {
+  color: $blue !important;
+}
+
+:global(.ms-CommandBarItem-text) {
+  font-size: 13px;
+  color: inherit !important;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Filter bar
+// ══════════════════════════════════════════════════════════════════════════════
 .filters {
-  padding: 12px 16px;
-  background: #fff;
-  border-bottom: 1px solid $ms-color-neutralLight;
+  padding: 12px 18px;
+  background: $bg-bar;
+  border-bottom: 1px solid $border;
   display: flex;
   align-items: flex-end;
   flex-wrap: wrap;
   gap: 10px;
 }
 
+// ── Search box — pill shape ───────────────────────────────────────────────────
 .searchBox {
-  width: 280px;
+  width: 300px;
 
-  // Slightly taller than default
   :global(.ms-SearchBox) {
-    height: 34px;
-    border-radius: 4px;
-  }
-}
-
-.filterDrop {
-  width: 170px;
-
-  :global(.ms-Dropdown-title) {
-    border-radius: 4px;
-    height: 34px;
-    line-height: 32px;
-    font-size: 13px;
-  }
-}
-
-// ── Result count strip ────────────────────────────────────────────────────────
-.resultCount {
-  padding: 6px 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: $ms-color-neutralSecondary;
-  font-size: 12px;
-  background: $ms-color-neutralLighterAlt;
-  border-bottom: 1px solid $ms-color-neutralLighter;
-}
-
-// ── DetailsList overrides ─────────────────────────────────────────────────────
-.list {
-  padding: 0;
-  background: #fff;
-
-  // Row hover
-  :global(.ms-DetailsRow) {
-    border-bottom: 1px solid $ms-color-neutralLighter;
-    transition: background 0.1s ease;
+    height: 36px;
+    border-radius: 20px;
+    border-color: $border;
+    background: $bg-white;
+    transition: border-color $t, box-shadow $t;
 
     &:hover {
-      background: $ms-color-neutralLighterAlt !important;
+      border-color: #93c5fd;
+      background: $bg-white;
     }
   }
 
-  // Make column headers slightly more prominent
-  :global(.ms-DetailsHeader) {
-    padding-top: 0;
+  :global(.ms-SearchBox.is-active) {
+    border-color: $blue;
+    box-shadow: 0 0 0 2px rgba(37,99,235,.14);
   }
 
+  :global(.ms-SearchBox-field) {
+    background: transparent;
+    color: $text-dark;
+  }
+}
+
+// ── Filter dropdowns ─────────────────────────────────────────────────────────
+.filterDrop {
+  width: 172px;
+
+  :global(.ms-Dropdown-title) {
+    border-radius: $r-sm;
+    height: 36px;
+    line-height: 34px;
+    font-size: 13px;
+    border-color: $border;
+    background: $bg-white;
+    transition: border-color $t;
+  }
+
+  :global(.ms-Dropdown-title:hover) {
+    border-color: #93c5fd;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Result count strip
+// ══════════════════════════════════════════════════════════════════════════════
+.resultCount {
+  padding: 6px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: $text-muted;
+  font-size: 12px;
+  background: $bg-bar;
+  border-bottom: 1px solid $border;
+
+  :global(.ms-Spinner-circle) { border-top-color: $blue !important; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DetailsList — modern SaaS table
+// ══════════════════════════════════════════════════════════════════════════════
+.list {
+  padding: 0;
+  background: $bg-white;
+
+  :global(.ms-DetailsHeader) { padding-top: 0; }
+
   :global(.ms-DetailsHeader-cell) {
-    background: $ms-color-neutralLighterAlt;
-    border-bottom: 2px solid $ms-color-neutralLight;
-    font-size: 12px;
-    font-weight: 600;
-    color: $ms-color-neutralSecondary;
+    background: $bg-bar;
+    border-bottom: 1px solid $border;
+    font-size: 10px;
+    font-weight: 700;
+    color: $text-muted;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.07em;
+  }
+
+  :global(.ms-DetailsHeader-cell:hover) {
+    background: #eff6ff;
+    color: $blue;
+  }
+
+  :global(.ms-DetailsRow) {
+    background: $bg-white;
+    border-bottom: 1px solid $border;
+    transition: background $t, box-shadow $t;
+
+    &:hover {
+      background: #eff6ff !important;
+      box-shadow: inset 3px 0 0 $blue;
+    }
+  }
+
+  :global(.ms-DetailsRow.is-selected) {
+    background: #dbeafe !important;
+    box-shadow: inset 3px 0 0 $blue;
   }
 
   :global(.ms-DetailsRow-cell) {
     display: flex;
     align-items: center;
     font-size: 13px;
+    color: $text-mid;
   }
 }
 
-// ── Asset ID link ─────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Asset ID chip — blue monospace
+// ══════════════════════════════════════════════════════════════════════════════
 .assetId {
-  font-family: 'Courier New', monospace;
+  font-family: 'SFMono-Regular', 'Consolas', 'Courier New', monospace;
   font-size: 12px;
   font-weight: 700;
-  color: $ms-color-themePrimary;
+  color: $blue;
   cursor: pointer;
-  letter-spacing: 0.3px;
-  padding: 2px 6px;
-  border-radius: 3px;
-  transition: background 0.1s ease;
+  letter-spacing: 0.4px;
+  padding: 2px 9px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px solid transparent;
+  transition: background $t, border-color $t;
 
   &:hover {
-    background: $ms-color-themeLighterAlt;
+    background: #dbeafe;
+    border-color: #93c5fd;
     text-decoration: underline;
   }
 }
 
-// ── Status badge ──────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Status badge — colored pill with dot
+// ══════════════════════════════════════════════════════════════════════════════
 .statusBadge {
-  display: inline-block;
-  padding: 3px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
   border-radius: 12px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.15px;
+  border: 1px solid rgba(0,0,0,.07);
+
+  // Color dot
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.65;
+    flex-shrink: 0;
+  }
 }
 
-// ── Row action buttons ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Row action buttons
+// ══════════════════════════════════════════════════════════════════════════════
 .rowActions {
   display: flex;
   gap: 2px;
   align-items: center;
-  opacity: 0.3;
-  transition: opacity 0.1s ease;
+  opacity: 0;
+  transition: opacity $t;
 
-  :global(.ms-DetailsRow):hover & {
-    opacity: 1;
-  }
+  :global(.ms-DetailsRow):hover & { opacity: 1; }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Empty state
+// ══════════════════════════════════════════════════════════════════════════════
 .empty {
-  padding: 60px 0;
-  color: $ms-color-neutralSecondary;
+  padding: 80px 24px 72px;
   text-align: center;
-  background: #fff;
+  background: $bg-white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .emptyIcon {
-  font-size: 48px;
-  color: $ms-color-neutralTertiaryAlt;
-  margin-bottom: 12px;
+  font-size: 60px;
+  color: #dbeafe;
+  margin-bottom: 8px;
   display: block;
+}
+
+.emptyTitle {
+  font-size: 17px;
+  font-weight: 600;
+  color: $text-mid;
+  margin: 0;
+}
+
+.emptyHint {
+  font-size: 13px;
+  color: $text-muted;
+  max-width: 320px;
+  line-height: 1.5;
+  margin: 0;
 }

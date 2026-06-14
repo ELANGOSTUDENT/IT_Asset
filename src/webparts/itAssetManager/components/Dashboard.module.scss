@@ -1,104 +1,171 @@
 @import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-$shadow-card:       0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.1);
-$shadow-card-hover: 0 3.2px 7.2px rgba(0,0,0,.13), 0 0.6px 1.8px rgba(0,0,0,.1);
-$radius: 6px;
-$transition: 0.15s ease;
+// ══════════════════════════════════════════════════════════════════════════════
+// Hybrid Executive — Design Tokens
+// ══════════════════════════════════════════════════════════════════════════════
+$blue:      #2563eb;
+$cyan:      #0284c7;
+$green:     #16a34a;
+$purple:    #7c3aed;
+$orange:    #ea580c;
+$red:       #dc2626;
 
-// ── Root ──────────────────────────────────────────────────────────────────────
-.root {
-  padding: 20px 24px;
+$text-dark: #0f172a;
+$text-mid:  #334155;
+$text-muted: #64748b;
+$text-label: #94a3b8;
+
+$border:    #e2e8f0;
+$bg-white:  #ffffff;
+$bg-alt:    #f8fafc;
+
+$shadow-card: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.07);
+$shadow-hover: 0 6px 20px rgba(0,0,0,.11), 0 2px 8px rgba(0,0,0,.07);
+$r:  14px;
+$r-sm: 10px;
+$t:  0.18s ease;
+
+// ── Animations ────────────────────────────────────────────────────────────────
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-// ── KPI row ───────────────────────────────────────────────────────────────────
+@keyframes barGrow {
+  from { width: 0 !important; opacity: 0; }
+}
+
+.fadeIn {
+  animation: fadeInUp 0.30s ease both;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Root
+// ══════════════════════════════════════════════════════════════════════════════
+.root {
+  padding: 24px 24px 36px;
+
+  :global {
+    .ms-Spinner-circle { border-top-color: $blue !important; }
+
+    .ms-Button--primary {
+      background: $blue !important;
+      border-color: $blue !important;
+      color: #fff !important;
+      border-radius: 9px !important;
+      font-weight: 600 !important;
+
+      &:hover:not(.is-disabled) {
+        background: #1d4ed8 !important;
+        border-color: #1d4ed8 !important;
+      }
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// KPI Row — colorful white cards
+// ══════════════════════════════════════════════════════════════════════════════
 .kpiRow {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .kpiCard {
-  flex: 1 1 130px;
-  min-width: 120px;
-  background: #fff;
-  border: 1px solid $ms-color-neutralLight;
-  border-radius: $radius;
-  padding: 16px 18px 14px;
+  flex: 1 1 150px;
+  min-width: 138px;
+  background: $bg-white;
+  border: 1px solid $border;
+  border-radius: $r;
+  padding: 20px 20px 18px;
   box-shadow: $shadow-card;
-  transition: box-shadow $transition, transform $transition;
+  transition: box-shadow $t, transform $t;
   cursor: default;
+  position: relative;
+  overflow: hidden;
 
+  // Colored top border is set inline via style prop in TSX
   &:hover {
-    box-shadow: $shadow-card-hover;
-    transform: translateY(-2px);
+    box-shadow: $shadow-hover;
+    transform: translateY(-3px);
   }
 }
 
 .kpiIconWrap {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
-  font-size: 16px;
+  margin-bottom: 14px;
+  font-size: 18px;
+  flex-shrink: 0;
+  // Inline background ${color}18 from TSX will render as colored tile
 }
 
 .kpiValue {
-  font-size: 30px;
-  font-weight: 700;
+  font-size: 34px;
+  font-weight: 800;
   line-height: 1;
-  color: $ms-color-neutralPrimary;
-  letter-spacing: -0.5px;
-  min-height: 36px;
+  color: $text-dark;
+  letter-spacing: -1.5px;
+  min-height: 38px;
 }
 
 .kpiLabel {
   font-size: 11px;
-  color: $ms-color-neutralSecondary;
-  margin-top: 6px;
-  font-weight: 500;
+  color: $text-muted;
+  margin-top: 7px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.05em;
 }
 
-// ── Panel row ─────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Analysis Panels Row
+// ══════════════════════════════════════════════════════════════════════════════
 .panels {
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .panel {
-  background: #fff;
-  border: 1px solid $ms-color-neutralLight;
-  border-radius: $radius;
-  padding: 16px 18px;
+  background: $bg-white;
+  border: 1px solid $border;
+  border-radius: $r;
+  padding: 18px 20px;
   box-shadow: $shadow-card;
   height: 100%;
+  transition: box-shadow $t;
+
+  &:hover { box-shadow: $shadow-hover; }
 }
 
 .panelHeader {
-  font-weight: 600;
-  font-size: 13px;
-  color: $ms-color-neutralSecondary;
+  font-weight: 700;
+  font-size: 11px;
+  color: $text-mid;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.07em;
   margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid $ms-color-neutralLighter;
+  padding-bottom: 12px;
+  border-bottom: 1px solid $border;
+
+  i { color: $blue; font-size: 14px; }
 }
 
 // ── Bar chart ─────────────────────────────────────────────────────────────────
 .barRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 10px;
   font-size: 13px;
 
@@ -106,41 +173,44 @@ $transition: 0.15s ease;
 }
 
 .barLabel {
-  width: 110px;
+  width: 115px;
   flex-shrink: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: $ms-color-neutralPrimary;
+  color: $text-mid;
   font-size: 12px;
+  font-weight: 500;
 }
 
 .barTrack {
   flex: 1;
-  height: 10px;
-  background: $ms-color-neutralLighter;
-  border-radius: 5px;
+  height: 7px;
+  background: #eef2ff;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .barFill {
   height: 100%;
-  background: linear-gradient(90deg, $ms-color-themePrimary, $ms-color-themeLight);
-  border-radius: 5px;
-  transition: width 0.4s ease;
+  background: linear-gradient(90deg, $blue, $cyan);
+  border-radius: 4px;
   min-width: 4px;
+  animation: barGrow 0.55s ease both;
+
+  @media (prefers-reduced-motion: reduce) { animation: none; }
 }
 
 .barCount {
-  width: 26px;
+  width: 28px;
   flex-shrink: 0;
   text-align: right;
   font-weight: 700;
-  color: $ms-color-neutralSecondary;
+  color: $text-mid;
   font-size: 12px;
 }
 
-// ── Status chips ──────────────────────────────────────────────────────────────
+// ── Status chips — inline colors from STATUS_BADGE_COLORS ────────────────────
 .statusGrid {
   display: flex;
   flex-wrap: wrap;
@@ -150,15 +220,19 @@ $transition: 0.15s ease;
 .statusChip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   padding: 5px 12px;
   border-radius: 20px;
   font-size: 12px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  transition: filter $transition;
+  font-weight: 600;
+  border: 1px solid rgba(0,0,0,.07);
+  transition: filter $t, transform $t;
+  cursor: default;
 
-  &:hover { filter: brightness(0.94); }
+  &:hover {
+    filter: brightness(.93);
+    transform: translateY(-1px);
+  }
 }
 
 .statusCount {
@@ -171,45 +245,59 @@ $transition: 0.15s ease;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 0;
-  border-bottom: 1px solid $ms-color-neutralLighter;
-  font-size: 13px;
+  padding: 8px 0;
+  border-bottom: 1px solid $border;
 
   &:last-child { border-bottom: none; }
 }
 
-.deptIcon { color: $ms-color-neutralTertiary; font-size: 14px; }
-.deptName { flex: 1; color: $ms-color-neutralPrimary; font-size: 13px; }
+.deptIcon { color: $text-label; font-size: 14px; }
+
+.deptName {
+  flex: 1;
+  color: $text-mid;
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .deptCount {
   font-weight: 700;
-  color: $ms-color-themePrimary;
+  color: $blue;
   font-size: 14px;
   min-width: 24px;
   text-align: right;
 }
 
-// ── Warranty alert table ──────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Warranty Alert Panel — soft amber/orange alert
+// ══════════════════════════════════════════════════════════════════════════════
 .warrantyPanel {
-  background: #fff;
-  border: 1px solid #ca5010;
-  border-radius: $radius;
+  background: #fffbf5;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid $orange;
+  border-radius: $r;
   box-shadow: $shadow-card;
   overflow: hidden;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .warrantyPanelHeader {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 18px;
-  background: #fdf6f0;
-  border-bottom: 1px solid #f3c7a5;
-  font-weight: 600;
-  font-size: 13px;
-  color: #ca5010;
+  padding: 12px 20px;
+  background: linear-gradient(90deg, #fff7ed, #fffbf5);
+  border-bottom: 1px solid #fed7aa;
+  font-weight: 700;
+  font-size: 11px;
+  color: $orange;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+
+  i { font-size: 15px; }
 }
 
 .warrantyTable {
@@ -219,48 +307,50 @@ $transition: 0.15s ease;
 
   th {
     text-align: left;
-    padding: 8px 12px;
-    background: $ms-color-neutralLighterAlt;
-    font-weight: 600;
-    border-bottom: 1px solid $ms-color-neutralLight;
-    color: $ms-color-neutralSecondary;
-    font-size: 11px;
+    padding: 9px 16px;
+    background: #fff7ed;
+    font-weight: 700;
+    border-bottom: 1px solid #fed7aa;
+    color: #92400e;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
   }
 }
 
 .warrantyRow {
   cursor: pointer;
-  transition: background $transition;
+  transition: background $t;
+  border-bottom: 1px solid #fef3c7;
 
   td {
-    padding: 8px 12px;
-    border-bottom: 1px solid $ms-color-neutralLighter;
+    padding: 9px 16px;
     vertical-align: middle;
+    color: $text-mid;
   }
 
-  &:last-child td { border-bottom: none; }
-
-  &:hover td {
-    background: $ms-color-neutralLighterAlt;
-  }
+  &:last-child { border-bottom: none; }
+  &:nth-child(even) td { background: rgba(255,251,235,.55); }
+  &:hover td { background: #fef3c7 !important; }
 }
 
 .assetLink {
-  color: $ms-color-themePrimary;
+  color: $blue;
   font-weight: 700;
-  font-family: 'Courier New', monospace;
+  font-family: 'SFMono-Regular', 'Consolas', 'Courier New', monospace;
   font-size: 12px;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
+  cursor: pointer;
 }
 
 .daysBadge {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 2px 9px;
+  border-radius: 11px;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  // Background/color set inline in TSX
 }
 
 // ── Footer CTA ────────────────────────────────────────────────────────────────

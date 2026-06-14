@@ -20,12 +20,13 @@ interface IAssetAttachmentSectionProps {
   fileService: FileUploadService;
 }
 
-// Categories available in the upload dialog
+// Categories available in the generic upload dialog.
+// Purchase, gifted, and scrap documents must go through their dedicated forms
+// (asset edit / status-change dialog) so the URL is saved to the list record field.
+// Files uploaded here go to the SharePoint library; only Repair Reports are
+// fetched back and displayed in this section (per-asset subfolder).
 const UPLOAD_CATEGORY_OPTIONS: { key: AttachmentCategory; text: string }[] = [
   { key: 'repairs',  text: 'Repair Report' },
-  { key: 'purchase', text: 'Purchase Invoice' },
-  { key: 'gifted',   text: 'Gift Document' },
-  { key: 'scrap',    text: 'Scrap / E-Waste Document' },
   { key: 'warranty', text: 'Warranty Document' },
   { key: 'other',    text: 'Other' },
 ];
@@ -142,10 +143,7 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({
   }, [urlAttachments, repairAttachments, libraryFiles]);
 
   const handleOpen = (attachment: IAttachment): void => {
-    window.open(
-      attachment.previewType === 'download' ? attachment.downloadUrl : attachment.absoluteUrl,
-      '_blank',
-    );
+    window.open(encodeURI(attachment.absoluteUrl), '_blank', 'noopener,noreferrer');
   };
 
   const handleUpload = async (): Promise<void> => {
@@ -250,6 +248,10 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({
         styles={{ main: { minWidth: 480 } }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+          <MessageBar messageBarType={MessageBarType.info}>
+            Files uploaded here are stored in the SharePoint library. Only Repair Reports are shown in this section.
+            For Purchase Invoice, Gift, or Scrap documents — use the dedicated forms so the URL is linked to the correct list record.
+          </MessageBar>
           <div>
             <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>
               Select Files
@@ -259,6 +261,11 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({
               multiple
               onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
             />
+            {selectedFiles.length > 0 && (
+              <span style={{ display: 'block', marginTop: 6, fontSize: 13, color: '#107c10' }}>
+                ✓ Ready to upload: {selectedFiles.map(f => f.name).join(', ')}
+              </span>
+            )}
           </div>
           <Dropdown
             label="Category"
@@ -266,9 +273,6 @@ const AssetAttachmentSection: React.FC<IAssetAttachmentSectionProps> = ({
             options={UPLOAD_CATEGORY_OPTIONS}
             onChange={(_e, opt) => setUploadCategory((opt?.key as AttachmentCategory) || 'repairs')}
           />
-          {selectedFiles.length > 0 && (
-            <span style={{ fontSize: 12, color: '#707070' }}>{selectedFiles.length} file(s) selected</span>
-          )}
         </div>
         <DialogFooter>
           <PrimaryButton onClick={handleUpload} disabled={!selectedFiles.length || uploading}>

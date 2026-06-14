@@ -25,10 +25,10 @@ interface IStats {
 }
 
 const STAT_CARDS = [
-  { key: 'Active',    label: 'Active',      icon: 'CheckMark',   color: '#107c10' },
-  { key: 'Stock',     label: 'In Stock',    icon: 'Inbox',       color: '#0078d4' },
-  { key: 'Repair',    label: 'In Repair',   icon: 'Wrench',      color: '#ca5010' },
-  { key: 'Procured',  label: 'Procured',    icon: 'ShoppingCart',color: '#8764b8' },
+  { key: 'Active',    label: 'Active',      icon: 'CheckMark',   color: '#16a34a' },
+  { key: 'Stock',     label: 'In Stock',    icon: 'Inbox',       color: '#0284c7' },
+  { key: 'Repair',    label: 'In Repair',   icon: 'Wrench',      color: '#ea580c' },
+  { key: 'Procured',  label: 'Procured',    icon: 'ShoppingCart',color: '#7c3aed' },
 ];
 
 const Dashboard: React.FC<IDashboardProps> = ({ assets, assetService, onViewAll, onViewAsset }) => {
@@ -52,10 +52,10 @@ const Dashboard: React.FC<IDashboardProps> = ({ assets, assetService, onViewAll,
   return (
     <div className={styles.root}>
       {/* Summary KPI row */}
-      <div className={styles.kpiRow}>
-        <div className={styles.kpiCard} style={{ borderTop: '4px solid #0078d4' }}>
-          <div className={styles.kpiIconWrap} style={{ background: 'rgba(0,120,212,.10)' }}>
-            <Icon iconName="PC1" style={{ color: '#0078d4', fontSize: 18 }} />
+      <div className={`${styles.kpiRow} ${styles.fadeIn}`}>
+        <div className={styles.kpiCard} style={{ borderTop: '4px solid #2563eb' }}>
+          <div className={styles.kpiIconWrap} style={{ background: 'rgba(37,99,235,.10)' }}>
+            <Icon iconName="PC1" style={{ color: '#2563eb', fontSize: 18 }} />
           </div>
           <div className={styles.kpiValue}>{total}</div>
           <div className={styles.kpiLabel}>Total Assets</div>
@@ -71,9 +71,9 @@ const Dashboard: React.FC<IDashboardProps> = ({ assets, assetService, onViewAll,
             <div className={styles.kpiLabel}>{c.label}</div>
           </div>
         ))}
-        <div className={styles.kpiCard} style={{ borderTop: '4px solid #ca5010' }}>
-          <div className={styles.kpiIconWrap} style={{ background: 'rgba(202,80,16,.10)' }}>
-            <Icon iconName="Warning" style={{ color: '#ca5010', fontSize: 18 }} />
+        <div className={styles.kpiCard} style={{ borderTop: '4px solid #dc2626' }}>
+          <div className={styles.kpiIconWrap} style={{ background: 'rgba(220,38,38,.10)' }}>
+            <Icon iconName="Warning" style={{ color: '#dc2626', fontSize: 18 }} />
           </div>
           <div className={styles.kpiValue}>
             {loadingStats ? <Shimmer width={40} styles={{ root: { marginTop: 4 } }} /> : (stats?.warrantyExpiringSoon || 0)}
@@ -91,7 +91,7 @@ const Dashboard: React.FC<IDashboardProps> = ({ assets, assetService, onViewAll,
         )}
       </div>
 
-      <Stack horizontal tokens={{ childrenGap: 24 }} className={styles.panels}>
+      <Stack horizontal tokens={{ childrenGap: 18 }} className={`${styles.panels} ${styles.fadeIn}`}>
         {/* Asset Type Breakdown */}
         <Stack.Item grow={1} className={styles.panel}>
           <div className={styles.panelHeader}>

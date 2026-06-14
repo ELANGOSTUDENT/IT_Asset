@@ -59,25 +59,66 @@ export class AssetService {
 
   async getNextSequenceNumber(type: string, country: string, office: string): Promise<number> {
     const prefix = AssetIdGenerator.getPrefix(type as any, country, office);
+    console.log(`[AssetService] getNextSequenceNumber — prefix: "${prefix}"`);
+
+    // Fetch all items matching this prefix so we can derive the true max from both
+    // SequenceNumber and the numeric suffix in Title (fallback if SequenceNumber is null).
     const items = await this._sp.web.lists
       .getByTitle(ASSETS_LIST)
       .items.filter(`startswith(Title,'${prefix}')`)
-      .select('SequenceNumber')
-      .orderBy('SequenceNumber', false)
-      .top(1)();
+      .select('Title', 'SequenceNumber')
+      .top(5000)();
 
-    if (!items.length) return 1;
-    return (items[0].SequenceNumber || 0) + 1;
+    if (!items.length) {
+      console.log(`[AssetService] No existing assets found for prefix "${prefix}" — starting at 1`);
+      return 1;
+    }
+
+    console.log(`[AssetService] Found ${items.length} existing asset(s) for prefix "${prefix}"`);
+
+    let maxSeq = 0;
+    for (const item of items) {
+      // Primary: SequenceNumber field
+      if (item.SequenceNumber != null && item.SequenceNumber > maxSeq) {
+        maxSeq = item.SequenceNumber;
+      }
+      // Fallback: parse numeric suffix from Title (handles null SequenceNumber)
+      const parsed = AssetIdGenerator.parse(item.Title);
+      if (parsed && parsed.sequence > maxSeq) {
+        console.log(`[AssetService] Fallback parse: Title="${item.Title}" → sequence=${parsed.sequence}`);
+        maxSeq = parsed.sequence;
+      }
+    }
+
+    const next = maxSeq + 1;
+    console.log(`[AssetService] Max SequenceNumber found: ${maxSeq} — next sequence: ${next}`);
+    return next;
   }
 
-  async addAsset(asset: Omit<IAsset, 'Id' | 'Title' | 'SequenceNumber'>): Promise<IAsset> {
-    const seq = await this.getNextSequenceNumber(asset.AssetType, asset.Country, asset.OfficeCode);
-    const assetId = AssetIdGenerator.generate(asset.AssetType, asset.Country, asset.OfficeCode, seq);
+  async addAsset(asset: Omit<IAsset, 'Id' | 'Title' | 'SequenceNumber'>): Promise<IAsset & { historyWarning?: string }> {
+    let seq = await this.getNextSequenceNumber(asset.AssetType, asset.Country, asset.OfficeCode);
+    let assetId = AssetIdGenerator.generate(asset.AssetType, asset.Country, asset.OfficeCode, seq);
+
+    // Duplicate guard: keep incrementing until the generated ID is unused.
+    // Protects against stale data or concurrent creates arriving in the same second.
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const existing = await this._sp.web.lists
+        .getByTitle(ASSETS_LIST)
+        .items.filter(`Title eq '${assetId}'`)
+        .select('Title')
+        .top(1)();
+      if (!existing.length) break;
+      console.warn(`[AssetService] Asset ID "${assetId}" already exists (attempt ${attempt + 1}) — incrementing`);
+      seq++;
+      assetId = AssetIdGenerator.generate(asset.AssetType, asset.Country, asset.OfficeCode, seq);
+    }
+
+    console.log(`[AssetService] Final generated Asset ID: "${assetId}", SequenceNumber: ${seq}`);
 
     const payload = { ...asset, Title: assetId, SequenceNumber: seq };
     const result = await this._sp.web.lists.getByTitle(ASSETS_LIST).items.add(payload);
 
-    await this._logHistory({
+    const historyOk = await this._logHistory({
       Title: assetId,
       AssetItemId: result.data.Id,
       NewStatus: asset.Status,
@@ -86,7 +127,11 @@ export class AssetService {
       HistoryNotes: 'Asset created and entered into the system.',
     });
 
-    return { ...payload, Id: result.data.Id };
+    const created: IAsset & { historyWarning?: string } = { ...payload, Id: result.data.Id };
+    if (!historyOk) {
+      created.historyWarning = 'Asset created, but history logging failed. Verify Asset_History list column names match: AssetItemId, NewStatus, ChangedBy, ChangeDate, HistoryNotes.';
+    }
+    return created;
   }
 
   async updateAsset(id: number, changes: Partial<IAsset>): Promise<void> {
@@ -112,10 +157,10 @@ export class AssetService {
     changedBy: string;
     /** Additional field updates (e.g. AssignedTo on Active) */
     extraFields?: Partial<IAsset>;
-  }): Promise<void> {
+  }): Promise<{ historyWarning?: string }> {
     const { assetId, itemId, previousStatus, newStatus, notes, changedBy, extraFields } = params;
     await this.updateAsset(itemId, { Status: newStatus, ...extraFields });
-    await this._logHistory({
+    const historyOk = await this._logHistory({
       Title: assetId,
       AssetItemId: itemId,
       PreviousStatus: previousStatus,
@@ -124,6 +169,7 @@ export class AssetService {
       ChangeDate: new Date().toISOString(),
       HistoryNotes: notes,
     });
+    return historyOk ? {} : { historyWarning: 'Status updated, but history logging failed. Verify Asset_History list column names match: PreviousStatus, NewStatus, ChangedBy, ChangeDate, HistoryNotes.' };
   }
 
   // ----------------------------------------------------------------
@@ -139,11 +185,13 @@ export class AssetService {
       .top(200)();
   }
 
-  private async _logHistory(history: Partial<IAssetHistory>): Promise<void> {
+  private async _logHistory(history: Partial<IAssetHistory>): Promise<boolean> {
     try {
       await this._sp.web.lists.getByTitle(HISTORY_LIST).items.add(history);
-    } catch {
-      console.warn('[AssetService] History list unavailable, skipping log.');
+      return true;
+    } catch (e) {
+      console.warn('[AssetService] History log failed — check Asset_History list column names:', e);
+      return false;
     }
   }
 
@@ -197,10 +245,15 @@ export class AssetService {
   }
 
   async getRecentHistory(limit: number = 10): Promise<IAssetHistory[]> {
-    return this._sp.web.lists.getByTitle(HISTORY_LIST)
-      .items.select('Id', 'Title', 'AssetItemId', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangeDate', 'HistoryNotes')
-      .orderBy('ChangeDate', false)
-      .top(limit)();
+    try {
+      return await this._sp.web.lists.getByTitle(HISTORY_LIST)
+        .items.select('Id', 'Title', 'AssetItemId', 'PreviousStatus', 'NewStatus', 'ChangedBy', 'ChangeDate', 'HistoryNotes')
+        .orderBy('ChangeDate', false)
+        .top(limit)();
+    } catch (e) {
+      console.warn('[AssetService] getRecentHistory failed — check Asset_History list column names:', e);
+      return [];
+    }
   }
 
   // ----------------------------------------------------------------

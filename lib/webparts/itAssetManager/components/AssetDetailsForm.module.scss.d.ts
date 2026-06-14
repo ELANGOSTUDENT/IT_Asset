@@ -1,4 +1,6 @@
 declare const styles: {
+    fadeIn: string;
+    fadeInUp: string;
     root: string;
     header: string;
     idPreview: string;
@@ -9,6 +11,7 @@ declare const styles: {
     fullWidth: string;
     fileField: string;
     fileLabel: string;
+    fileSelected: string;
     fileLink: string;
     repairEntry: string;
     repairRow: string;

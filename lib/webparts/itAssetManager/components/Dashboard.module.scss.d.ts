@@ -1,4 +1,6 @@
 declare const styles: {
+    fadeIn: string;
+    fadeInUp: string;
     root: string;
     kpiRow: string;
     kpiCard: string;
@@ -12,6 +14,7 @@ declare const styles: {
     barLabel: string;
     barTrack: string;
     barFill: string;
+    barGrow: string;
     barCount: string;
     statusGrid: string;
     statusChip: string;

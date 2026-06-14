@@ -11,7 +11,9 @@ export declare class AssetService {
     getAssets(): Promise<IAsset[]>;
     getAssetById(id: number): Promise<IAsset>;
     getNextSequenceNumber(type: string, country: string, office: string): Promise<number>;
-    addAsset(asset: Omit<IAsset, 'Id' | 'Title' | 'SequenceNumber'>): Promise<IAsset>;
+    addAsset(asset: Omit<IAsset, 'Id' | 'Title' | 'SequenceNumber'>): Promise<IAsset & {
+        historyWarning?: string;
+    }>;
     updateAsset(id: number, changes: Partial<IAsset>): Promise<void>;
     deleteAsset(id: number): Promise<void>;
     changeStatus(params: {
@@ -23,7 +25,9 @@ export declare class AssetService {
         changedBy: string;
         /** Additional field updates (e.g. AssignedTo on Active) */
         extraFields?: Partial<IAsset>;
-    }): Promise<void>;
+    }): Promise<{
+        historyWarning?: string;
+    }>;
     getAssetHistory(assetId: string): Promise<IAssetHistory[]>;
     private _logHistory;
     getDashboardStats(): Promise<{

@@ -1,4 +1,6 @@
 declare const styles: {
+    fadeIn: string;
+    fadeInUp: string;
     root: string;
     header: string;
     title: string;

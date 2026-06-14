@@ -1,4 +1,6 @@
 declare const styles: {
+    fadeIn: string;
+    fadeInUp: string;
     root: string;
     filters: string;
     searchBox: string;
@@ -10,6 +12,8 @@ declare const styles: {
     rowActions: string;
     empty: string;
     emptyIcon: string;
+    emptyTitle: string;
+    emptyHint: string;
 };
 export default styles;
 //# sourceMappingURL=AssetTable.module.scss.d.ts.map

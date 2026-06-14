@@ -79,30 +79,57 @@ const DateField: React.FC<IDateFieldProps> = ({ label, value, onChange, error, d
 interface IFileFieldProps {
   label: string;
   existingUrl?: string;
+  selectedFile?: File | null;
   onFileSelected: (file: File | null) => void;
 }
 
-const FileField: React.FC<IFileFieldProps> = ({ label, existingUrl, onFileSelected }) => (
-  <div>
-    <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>{label}</label>
-    <div className={styles.fileField}>
-      <label className={styles.fileLabel}>
-        <AttachRegular />
-        <span>Choose file…</span>
-        <input
-          type="file"
-          style={{ display: 'none' }}
-          onChange={(e) => onFileSelected(e.target.files?.[0] ?? null)}
-        />
-      </label>
-      {existingUrl && (
-        <a href={existingUrl} target="_blank" rel="noreferrer" className={styles.fileLink}>
-          View existing
-        </a>
+const FileField: React.FC<IFileFieldProps> = ({ label, existingUrl, selectedFile, onFileSelected }) => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const handleClear = () => {
+    if (inputRef.current) inputRef.current.value = '';
+    onFileSelected(null);
+  };
+  return (
+    <div>
+      <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>{label}</label>
+      <div className={styles.fileField}>
+        <label className={styles.fileLabel}>
+          <AttachRegular />
+          <span>Choose file…</span>
+          <input
+            ref={inputRef}
+            type="file"
+            style={{ display: 'none' }}
+            onChange={(e) => onFileSelected(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        {existingUrl && !selectedFile && (
+          <a href={existingUrl} target="_blank" rel="noopener noreferrer" className={styles.fileLink}>
+            View existing
+          </a>
+        )}
+      </div>
+      {selectedFile && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+          <span style={{ color: '#107c10', fontSize: 13 }}>
+            ✓ Ready to upload: {selectedFile.name}
+          </span>
+          <button
+            type="button"
+            onClick={handleClear}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: '#707070', fontSize: 16, padding: '0 2px', lineHeight: 1,
+            }}
+            title="Remove selected file"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
-  </div>
-);
+  );
+};
 
 // ── Section card ───────────────────────────────────────────────────────────────
 
@@ -500,6 +527,7 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
             <FileField
               label="Purchase Bill / Invoice"
               existingUrl={form.PurchaseBillUrl}
+              selectedFile={purchaseBillFile}
               onFileSelected={setPurchaseBillFile}
             />
           </div>
@@ -524,8 +552,8 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         {r.AttachmentUrl && (
-                          <a href={r.AttachmentUrl} target="_blank" rel="noreferrer" className={styles.fileLink}>
-                            <AttachRegular /> Attachment
+                          <a href={r.AttachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.fileLink}>
+                            <AttachRegular /> View repair report
                           </a>
                         )}
                         <IconButton

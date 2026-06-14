@@ -1,17 +1,21 @@
 /* tslint:disable */
 require("./AssetTable.module.css");
 const styles = {
-  root: 'root_a5b8f554',
-  filters: 'filters_a5b8f554',
-  searchBox: 'searchBox_a5b8f554',
-  filterDrop: 'filterDrop_a5b8f554',
-  resultCount: 'resultCount_a5b8f554',
-  list: 'list_a5b8f554',
-  assetId: 'assetId_a5b8f554',
-  statusBadge: 'statusBadge_a5b8f554',
-  rowActions: 'rowActions_a5b8f554',
-  empty: 'empty_a5b8f554',
-  emptyIcon: 'emptyIcon_a5b8f554'
+  fadeIn: 'fadeIn_db706550',
+  fadeInUp: 'fadeInUp_db706550',
+  root: 'root_db706550',
+  filters: 'filters_db706550',
+  searchBox: 'searchBox_db706550',
+  filterDrop: 'filterDrop_db706550',
+  resultCount: 'resultCount_db706550',
+  list: 'list_db706550',
+  assetId: 'assetId_db706550',
+  statusBadge: 'statusBadge_db706550',
+  rowActions: 'rowActions_db706550',
+  empty: 'empty_db706550',
+  emptyIcon: 'emptyIcon_db706550',
+  emptyTitle: 'emptyTitle_db706550',
+  emptyHint: 'emptyHint_db706550'
 };
 
 export default styles;

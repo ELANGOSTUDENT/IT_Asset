@@ -87,7 +87,7 @@ export class FileUploadService {
         .items
         .filter(`startswith(FileRef, '${repairFolderPath}') and FSObjType eq 0`)
         .orderBy('Created', false)
-        .select('FileRef', 'FileLeafRef', 'Created', 'File_x0020_Size')();
+        .select('FileRef', 'FileLeafRef', 'Created')();
       return items.map(item => {
         const srUrl = item.FileRef as string;
         const absUrl = this.getAbsoluteUrl(srUrl);
@@ -98,7 +98,7 @@ export class FileUploadService {
           downloadUrl: `${absUrl}?download=1`,
           category: 'repairs' as AttachmentCategory,
           timeCreated: item.Created as string,
-          fileSize: (item.File_x0020_Size as number) || 0,
+          fileSize: 0,
           previewType: this._getPreviewType(item.FileLeafRef as string),
         };
       });

@@ -1,17 +1,66 @@
 @import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-$shadow-header: 0 1.6px 3.6px rgba(0,0,0,.132), 0 0.3px 0.9px rgba(0,0,0,.108);
+// ══════════════════════════════════════════════════════════════════════════════
+// Hybrid Executive — Design Tokens
+// ══════════════════════════════════════════════════════════════════════════════
 
-// ── Root shell ────────────────────────────────────────────────────────────────
+// Canvas
+$bg-canvas:   #eef4ff;
+$bg-surface:  #f8fafc;
+
+// Dark header
+$hdr-from:    #0b1020;
+$hdr-to:      #1e293b;
+
+// Accents
+$blue:        #2563eb;
+$cyan:        #0284c7;
+$green:       #16a34a;
+$purple:      #7c3aed;
+$orange:      #ea580c;
+$red:         #dc2626;
+
+// Text
+$text-dark:   #0f172a;
+$text-mid:    #334155;
+$text-muted:  #64748b;
+$text-hdr:    #f1f5f9;
+$text-hdr-2:  #94a3b8;
+
+// Borders / shadows
+$border:      #e2e8f0;
+$shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+$shadow-md:   0 4px 16px rgba(0,0,0,.09), 0 1px 4px rgba(0,0,0,.06);
+$shadow-hdr:  0 4px 24px rgba(0,0,0,.28);
+$r-lg:        16px;
+$r-md:        10px;
+$t:           0.18s ease;
+
+// ── Animations ────────────────────────────────────────────────────────────────
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fadeIn {
+  animation: fadeInUp 0.28s ease both;
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Root — light canvas
+// ══════════════════════════════════════════════════════════════════════════════
 .root {
-  padding: 0 0 40px;
+  padding: 0 0 48px;
   font-family: $ms-font-family-fallbacks;
-  color: $ms-color-neutralPrimary;
-  background: $ms-color-neutralLighterAlt;
+  color: $text-dark;
   min-height: 600px;
+  background-color: $bg-canvas;
+  // Subtle dot-grid texture
+  background-image: radial-gradient(circle, rgba(37,99,235,.06) 1px, transparent 1px);
+  background-size: 26px 26px;
 
-  // MessageBar sits flush across the full width, below header
+  // MessageBar — light theme, stays light
   :global(.ms-MessageBar) {
     border-radius: 0;
     border-left: none;
@@ -19,69 +68,111 @@ $shadow-header: 0 1.6px 3.6px rgba(0,0,0,.132), 0 0.3px 0.9px rgba(0,0,0,.108);
     border-top: none;
     margin: 0;
   }
+
+  :global(.ms-Spinner-circle) {
+    border-top-color: $blue !important;
+  }
 }
 
-// ── App header ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// App header — premium dark navy executive bar
+// ══════════════════════════════════════════════════════════════════════════════
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
-  background: #fff;
-  border-bottom: 1px solid $ms-color-neutralLight;
-  box-shadow: $shadow-header;
+  padding: 0 28px;
+  height: 60px;
+  background: linear-gradient(135deg, $hdr-from 0%, #111827 55%, $hdr-to 100%);
+  box-shadow: $shadow-hdr;
   flex-wrap: wrap;
   gap: 8px;
+  position: relative; // avoid sticky conflicts with SP nav
+
+  // Subtle bottom accent line
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, $blue 0%, $cyan 40%, $purple 80%, $blue 100%);
+    opacity: 0.7;
+    pointer-events: none;
+  }
 }
 
 .title {
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 700;
-  color: $ms-color-neutralPrimary;
-  letter-spacing: -0.3px;
+  color: #ffffff;
+  letter-spacing: -0.2px;
 }
 
 .subtitle {
-  font-size: 13px;
-  color: $ms-color-neutralSecondary;
+  font-size: 12px;
+  color: $text-hdr-2;
   font-weight: 400;
+  margin-top: 2px;
 }
 
-// Pill badge showing total asset count
+// Asset count pill — blue glass on dark header
 .badge {
-  background: linear-gradient(135deg, $ms-color-themePrimary 0%, $ms-color-themeDark 100%);
-  color: #fff;
+  background: rgba(37,99,235,.22);
+  border: 1px solid rgba(147,197,253,.35);
+  color: #bfdbfe;
   font-size: 12px;
   font-weight: 700;
-  padding: 4px 14px;
+  padding: 3px 14px;
   border-radius: 20px;
   letter-spacing: 0.4px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 120, 212, 0.35);
-  transition: box-shadow 0.15s ease;
+  transition: background $t;
 
   &:hover {
-    box-shadow: 0 3px 12px rgba(0, 120, 212, 0.45);
+    background: rgba(37,99,235,.32);
   }
 }
 
-// ── Tab pivot ────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// Tab pivot — white surface below dark header
+// ══════════════════════════════════════════════════════════════════════════════
 .pivot {
-  background: #fff;
-  border-bottom: 1px solid $ms-color-neutralLight;
-  padding: 0 16px;
+  background: #ffffff;
+  border-bottom: 1px solid $border;
+  padding: 0 24px;
+  box-shadow: $shadow-sm;
 
-  // Tighten the built-in Pivot bottom padding
-  :global(.ms-Pivot) {
-    padding-bottom: 0;
-  }
+  :global(.ms-Pivot)      { padding-bottom: 0; }
+  :global(.ms-Pivot-root) { background: transparent; }
 
   :global(.ms-Pivot-link) {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
+    color: $text-muted;
+    height: 44px;
+    line-height: 44px;
+    background: transparent !important;
+    transition: color $t;
   }
 
   :global(.ms-Pivot-link.is-selected) {
     font-weight: 600;
+    color: $blue !important;
+  }
+
+  :global(.ms-Pivot-link.is-selected::before) {
+    border-bottom-color: $blue !important;
+    border-bottom-width: 2px !important;
+  }
+
+  :global(.ms-Pivot-link:hover:not(.is-selected)) {
+    color: $text-dark !important;
+    background: transparent !important;
+  }
+
+  :global(.ms-Pivot-link:hover:not(.is-selected)::before) {
+    border-bottom-color: transparent !important;
   }
 }

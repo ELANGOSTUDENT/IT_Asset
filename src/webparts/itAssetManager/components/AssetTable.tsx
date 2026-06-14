@@ -210,10 +210,15 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
       </div>
 
       {filtered.length === 0 && !loading ? (
-        <Stack horizontalAlign="center" className={styles.empty}>
+        <div className={`${styles.empty} ${styles.fadeIn}`}>
           <Icon iconName="Inbox" className={styles.emptyIcon} />
-          <Text>No assets found. {assets.length === 0 ? 'Click "Add Asset" to get started.' : 'Try adjusting your filters.'}</Text>
-        </Stack>
+          <p className={styles.emptyTitle}>No assets found</p>
+          <p className={styles.emptyHint}>
+            {assets.length === 0
+              ? 'Click "Add Asset" to register your first asset.'
+              : 'Try adjusting your search or filters.'}
+          </p>
+        </div>
       ) : (
         <DetailsList
           items={filtered}
@@ -221,7 +226,7 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
           layoutMode={DetailsListLayoutMode.justified}
           selectionMode={SelectionMode.none}
           compact
-          className={styles.list}
+          className={`${styles.list} ${styles.fadeIn}`}
         />
       )}
     </div>

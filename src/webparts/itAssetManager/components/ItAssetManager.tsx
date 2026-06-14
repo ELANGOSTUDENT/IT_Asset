@@ -90,9 +90,13 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
     try {
       const created = await svc.addAsset(asset as Parameters<typeof svc.addAsset>[0]);
       await loadAssets();
-      notify(`Asset ${created.Title} created.`);
       setSelected(created);
       setAssignPromptAsset(created);  // trigger "Assign now?" prompt
+      if (created.historyWarning) {
+        notify(`Asset ${created.Title} created. Warning: history logging failed — check Asset_History list column names.`);
+      } else {
+        notify(`Asset ${created.Title} created.`);
+      }
     } catch {
       setError('Failed to create asset.');
     }
@@ -113,7 +117,7 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
 
   const handleStatusChange = async (asset: IAsset, newStatus: AssetStatus, notes: string) => {
     try {
-      await svc.changeStatus({
+      const statusResult = await svc.changeStatus({
         assetId: asset.Title, itemId: asset.Id!,
         previousStatus: asset.Status, newStatus, notes,
         changedBy: props.userDisplayName,
@@ -130,7 +134,11 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
       await loadAssets();
       const refreshed = await svc.getAssetById(asset.Id!);
       setSelected(refreshed);
-      notify(`Status changed to "${newStatus}".`);
+      if (statusResult?.historyWarning) {
+        notify(`Status changed to "${newStatus}". Warning: history logging failed — check Asset_History list column names.`);
+      } else {
+        notify(`Status changed to "${newStatus}".`);
+      }
     } catch {
       setError('Failed to change status.');
     }

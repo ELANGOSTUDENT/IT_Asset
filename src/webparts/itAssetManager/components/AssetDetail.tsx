@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Spinner, SpinnerSize,
   MessageBar, MessageBarType,
@@ -21,7 +21,7 @@ import {
 } from '../models/IAsset';
 import { IAssetHistory } from '../models/IAssetHistory';
 import { IAssetAssignment } from '../models/IAssetAssignment';
-import { IRepairEntry } from '../models/IRepairEntry';
+import { IRepairEntry, IRepairEntryDraft, emptyRepairDraft } from '../models/IRepairEntry';
 import { IGiftedAsset } from '../models/IGiftedAsset';
 import { IScrapAsset } from '../models/IScrapAsset';
 import { AssetService } from '../services/AssetService';
@@ -147,7 +147,7 @@ const GiftedDialog: React.FC<IGiftedDialogProps> = ({
         <div>
           <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Authorisation Letter</label>
           {draft.GiftAttachmentUrl && (
-            <a href={draft.GiftAttachmentUrl} target="_blank" rel="noreferrer" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+            <a href={draft.GiftAttachmentUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
               View existing
             </a>
           )}
@@ -236,7 +236,7 @@ const ScrapDialog: React.FC<IScrapDialogProps> = ({
         <div>
           <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Certificate / Document</label>
           {draft.ScrapAttachmentUrl && (
-            <a href={draft.ScrapAttachmentUrl} target="_blank" rel="noreferrer" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
+            <a href={draft.ScrapAttachmentUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
               View existing
             </a>
           )}
@@ -266,6 +266,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
   const [gifted, setGifted]             = useState<IGiftedAsset | null>(null);
   const [scrap, setScrap]               = useState<IScrapAsset | null>(null);
   const [loadingHist, setLoadingHist]   = useState(true);
+  const [historyLoadError, setHistoryLoadError] = useState(false);
   const [loadingRepairs, setLoadingRepairs] = useState(true);
   const [loadingAssign, setLoadingAssign] = useState(true);
   const [loadingGifted, setLoadingGifted] = useState(false);
@@ -277,13 +278,24 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
   const [changing, setChanging]         = useState(false);
   const [noteErr, setNoteErr]           = useState('');
 
-  // Gifted / scrap edit dialogs
+  // Gifted / scrap edit dialogs (for after-the-fact corrections)
   const [showGiftedDlg, setShowGiftedDlg]   = useState(false);
   const [giftedDraft, setGiftedDraft]       = useState<Partial<IGiftedAsset>>({});
   const [savingGifted, setSavingGifted]     = useState(false);
   const [showScrapDlg, setShowScrapDlg]     = useState(false);
   const [scrapDraft, setScrapDraft]         = useState<Partial<IScrapAsset>>({});
   const [savingScrap, setSavingScrap]       = useState(false);
+
+  // Inline detail capture inside the status-change dialog
+  const [scrapDraftSt, setScrapDraftSt]   = useState<Partial<IScrapAsset>>({});
+  const [scrapFileSt, setScrapFileSt]     = useState<File | null>(null);
+  const scrapFileInputRef                 = useRef<HTMLInputElement>(null);
+  const [giftedDraftSt, setGiftedDraftSt] = useState<Partial<IGiftedAsset>>({});
+  const [giftedFileSt, setGiftedFileSt]   = useState<File | null>(null);
+  const giftedFileInputRef                = useRef<HTMLInputElement>(null);
+  const [repairDraftSt, setRepairDraftSt] = useState<IRepairEntryDraft>(emptyRepairDraft());
+  const [repairFileSt, setRepairFileSt]   = useState<File | null>(null);
+  const repairFileInputRef                = useRef<HTMLInputElement>(null);
 
   const showGifted = asset.Status === 'Gifted';
   const showScrap  = asset.Status === 'Scrapped' || asset.Status === 'Disposed';
@@ -292,12 +304,18 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
     setLoadingHist(true);
     setLoadingRepairs(true);
     setLoadingAssign(true);
+    setHistoryLoadError(false);
     const [hist, reps, assign] = await Promise.allSettled([
       assetService.getAssetHistory(asset.Title),
       repairService.getRepairs(asset.Title),
       assignmentService.getActiveAssignment(asset.Title),
     ]);
-    if (hist.status === 'fulfilled') setHistory(hist.value);
+    if (hist.status === 'fulfilled') {
+      setHistory(hist.value);
+    } else {
+      setHistoryLoadError(true);
+      console.warn('[AssetDetail] getAssetHistory rejected:', hist.reason);
+    }
     if (reps.status === 'fulfilled') setRepairs(reps.value);
     if (assign.status === 'fulfilled') setAssignment(assign.value);
     setLoadingHist(false);
@@ -335,22 +353,128 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
 
   const validTransitions = ASSET_STATUS_TRANSITIONS[asset.Status] || [];
 
+  const resetStatusDialog = () => {
+    setShowStatusDlg(false);
+    setNewStatus(null);
+    setStatusNote('');
+    setNoteErr('');
+    setScrapDraftSt({}); setScrapFileSt(null);
+    if (scrapFileInputRef.current) scrapFileInputRef.current.value = '';
+    setGiftedDraftSt({}); setGiftedFileSt(null);
+    if (giftedFileInputRef.current) giftedFileInputRef.current.value = '';
+    setRepairDraftSt(emptyRepairDraft()); setRepairFileSt(null);
+    if (repairFileInputRef.current) repairFileInputRef.current.value = '';
+  };
+
   const confirmStatusChange = async () => {
     if (!newStatus) return;
-    if (STATUS_REQUIRES_NOTE.includes(newStatus) && !statusNote.trim()) {
+
+    // Notes required for Lost / Stolen / Disposed only
+    if ((newStatus === 'Lost' || newStatus === 'Stolen' || newStatus === 'Disposed') && !statusNote.trim()) {
       setNoteErr('A note is required for this status change.'); return;
     }
+    // Gifted detail: "Gifted To" is required
+    if (newStatus === 'Gifted' && !giftedDraftSt.GiftedTo?.trim()) {
+      setNoteErr('"Gifted To" is required.'); return;
+    }
+    // Repair detail: date, vendor, and description are required
+    if (newStatus === 'Repair') {
+      if (!repairDraftSt.RepairDate || !repairDraftSt.RepairVendor.trim() || !repairDraftSt.IssueDescription.trim()) {
+        setNoteErr('Repair date, vendor, and issue description are required.'); return;
+      }
+    }
+
     setNoteErr('');
     setChanging(true);
+
+    const needScrap = newStatus === 'Scrapped' || (newStatus === 'Disposed' && !scrap);
+
     try {
+      // ── 1. Save scrap record (Scrapped / Disposed without existing record) ──
+      if (needScrap) {
+        let scrapUrl: string | undefined;
+        if (scrapFileSt) {
+          const r = await fileService.upload(asset.Title, 'scrap', scrapFileSt);
+          scrapUrl = r.serverRelativeUrl;
+        }
+        const scrapPayload: Omit<IScrapAsset, 'Id'> = {
+          Title: asset.Title,
+          AssetItemId: asset.Id!,
+          ScrapDate: scrapDraftSt.ScrapDate,
+          ScrapVendor: scrapDraftSt.ScrapVendor,
+          ScrapAmount: scrapDraftSt.ScrapAmount,
+          ScrapAttachmentUrl: scrapUrl,
+          ScrapRemarks: scrapDraftSt.ScrapRemarks,
+        };
+        if (scrap?.Id) {
+          await scrapService.updateScrap(scrap.Id, scrapPayload);
+          setScrap(prev => ({ ...prev!, ...scrapPayload }));
+        } else {
+          const created = await scrapService.addScrap(scrapPayload);
+          setScrap(created);
+        }
+      }
+
+      // ── 2. Save gifted record ──
+      if (newStatus === 'Gifted') {
+        let giftUrl: string | undefined;
+        if (giftedFileSt) {
+          const r = await fileService.upload(asset.Title, 'gifted', giftedFileSt);
+          giftUrl = r.serverRelativeUrl;
+        }
+        const giftPayload: Omit<IGiftedAsset, 'Id'> = {
+          Title: asset.Title,
+          AssetItemId: asset.Id!,
+          GiftedTo: giftedDraftSt.GiftedTo!,
+          GiftedDate: giftedDraftSt.GiftedDate,
+          GiftAttachmentUrl: giftUrl,
+          GiftRemarks: giftedDraftSt.GiftRemarks,
+        };
+        if (gifted?.Id) {
+          await giftedService.updateGifted(gifted.Id, giftPayload);
+          setGifted(prev => ({ ...prev!, ...giftPayload }));
+        } else {
+          const created = await giftedService.addGifted(giftPayload);
+          setGifted(created);
+        }
+      }
+
+      // ── 3. Save repair record ──
+      if (newStatus === 'Repair') {
+        let repairUrl: string | undefined;
+        if (repairFileSt) {
+          const uniqueFile = new File(
+            [repairFileSt],
+            `${Date.now()}_${repairFileSt.name}`,
+            { type: repairFileSt.type }
+          );
+          const r = await fileService.upload(asset.Title, 'repairs', uniqueFile);
+          repairUrl = r.serverRelativeUrl;
+        }
+        const newRepair = await repairService.addRepair({
+          Title: asset.Title,
+          AssetItemId: asset.Id!,
+          RepairDate: repairDraftSt.RepairDate,
+          RepairVendor: repairDraftSt.RepairVendor,
+          IssueDescription: repairDraftSt.IssueDescription,
+          RepairCost: repairDraftSt.RepairCost,
+          Resolution: repairDraftSt.Resolution || undefined,
+          Remarks: repairDraftSt.Remarks || undefined,
+          AttachmentUrl: repairUrl,
+        });
+        setRepairs(prev => [newRepair, ...prev]);
+      }
+
+      // ── 4. Change asset status (only after all detail records saved) ──
       await onStatusChange(
         asset, newStatus,
         statusNote.trim() || `Status changed to ${newStatus} by ${currentUser}`
       );
-      setShowStatusDlg(false);
-      setNewStatus(null);
-      setStatusNote('');
+
+      resetStatusDialog();
       await loadData();
+    } catch (e) {
+      setNoteErr(e instanceof Error ? e.message : 'An error occurred. Please try again.');
     } finally {
       setChanging(false);
     }
@@ -443,7 +567,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
         </MessageBar>
       )}
 
-      <div className={styles.body}>
+      <div className={`${styles.body} ${styles.fadeIn}`}>
         {/* ══ LEFT PANEL — Asset details ══ */}
         <div className={styles.details}>
 
@@ -481,7 +605,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
               } />
             </div>
             {asset.PurchaseBillUrl && (
-              <a href={asset.PurchaseBillUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
+              <a href={asset.PurchaseBillUrl} target="_blank" rel="noopener noreferrer" className={styles.attachLink}>
                 <AttachRegular /> View purchase bill
               </a>
             )}
@@ -511,7 +635,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                         </span>
                       )}
                       {r.AttachmentUrl && (
-                        <a href={r.AttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
+                        <a href={r.AttachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.attachLink}>
                           <AttachRegular /> View attachment
                         </a>
                       )}
@@ -534,7 +658,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                     <F label="Remarks"     value={gifted.GiftRemarks} />
                   </div>
                   {gifted.GiftAttachmentUrl && (
-                    <a href={gifted.GiftAttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
+                    <a href={gifted.GiftAttachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.attachLink}>
                       <AttachRegular /> Authorisation letter
                     </a>
                   )}
@@ -571,7 +695,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                     <F label="Remarks"      value={scrap.ScrapRemarks} />
                   </div>
                   {scrap.ScrapAttachmentUrl && (
-                    <a href={scrap.ScrapAttachmentUrl} target="_blank" rel="noreferrer" className={styles.attachLink}>
+                    <a href={scrap.ScrapAttachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.attachLink}>
                       <AttachRegular /> Certificate / Document
                     </a>
                   )}
@@ -666,6 +790,10 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
             <div className={styles.cardTitle}><HistoryRegular /> Change History</div>
             {loadingHist ? (
               <Spinner size={SpinnerSize.small} label="Loading history…" />
+            ) : historyLoadError ? (
+              <MessageBar messageBarType={MessageBarType.warning}>
+                History could not be loaded. The Asset_History list column names may not match — contact your SharePoint admin to verify column internal names.
+              </MessageBar>
             ) : history.length === 0 ? (
               <span style={{ fontSize: 12, color: '#707070' }}>No history recorded yet.</span>
             ) : (
@@ -700,16 +828,21 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
       {/* ── Status Change Dialog ── */}
       <Dialog
         hidden={!showStatusDlg}
-        onDismiss={() => { setShowStatusDlg(false); setNewStatus(null); setStatusNote(''); setNoteErr(''); }}
-        dialogContentProps={{
-          type: DialogType.normal,
-          title: 'Change Asset Status',
-        }}
+        onDismiss={resetStatusDialog}
+        dialogContentProps={{ type: DialogType.normal, title: 'Change Asset Status' }}
         modalProps={{ isBlocking: false }}
-        styles={{ main: { minWidth: 480 } }}
+        styles={{ main: {
+          minWidth: newStatus === 'Repair' ? 640
+                  : (newStatus === 'Scrapped' || newStatus === 'Gifted' || (newStatus === 'Disposed' && !scrap)) ? 560
+                  : 480,
+          maxWidth: '92vw',
+        } }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
-          <span style={{ fontSize: 12, color: '#707070' }}>Current status: <strong>{asset.Status}</strong></span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 8, maxHeight: '72vh', overflowY: 'auto', paddingRight: 4 }}>
+          <span style={{ fontSize: 12, color: '#707070' }}>
+            Current status: <strong>{asset.Status}</strong>
+          </span>
+
           <Dropdown
             label="New Status *"
             selectedKey={newStatus || ''}
@@ -721,33 +854,186 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
               const val = option?.key as string;
               setNewStatus(val ? val as AssetStatus : null);
               setNoteErr('');
+              setScrapDraftSt({}); setScrapFileSt(null);
+              if (scrapFileInputRef.current) scrapFileInputRef.current.value = '';
+              setGiftedDraftSt({}); setGiftedFileSt(null);
+              if (giftedFileInputRef.current) giftedFileInputRef.current.value = '';
+              setRepairDraftSt(emptyRepairDraft()); setRepairFileSt(null);
+              if (repairFileInputRef.current) repairFileInputRef.current.value = '';
             }}
           />
+
+          {/* ── Scrap / Disposal details (Scrapped, or Disposed without existing record) ── */}
+          {(newStatus === 'Scrapped' || (newStatus === 'Disposed' && !scrap)) && (
+            <div style={{ borderTop: '1px solid #e1dfdd', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ fontWeight: 700, fontSize: 11, color: '#605e5c', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Scrap / Disposal Details
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Scrap Date</label>
+                  <input
+                    type="date"
+                    value={scrapDraftSt.ScrapDate ? scrapDraftSt.ScrapDate.slice(0, 10) : ''}
+                    onChange={e => setScrapDraftSt(d => ({ ...d, ScrapDate: e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : '' }))}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, border: '1px solid #d1d1d1', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <TextField
+                  label="Scrap Vendor"
+                  value={scrapDraftSt.ScrapVendor || ''}
+                  onChange={(_e, v) => setScrapDraftSt(d => ({ ...d, ScrapVendor: v || '' }))}
+                />
+                <TextField
+                  label="Scrap Amount (INR)"
+                  type="number"
+                  prefix="₹"
+                  value={scrapDraftSt.ScrapAmount != null ? String(scrapDraftSt.ScrapAmount) : ''}
+                  onChange={(_e, v) => setScrapDraftSt(d => ({ ...d, ScrapAmount: v ? parseFloat(v) : undefined }))}
+                />
+                <TextField
+                  label="Scrap Remarks"
+                  value={scrapDraftSt.ScrapRemarks || ''}
+                  onChange={(_e, v) => setScrapDraftSt(d => ({ ...d, ScrapRemarks: v || '' }))}
+                />
+              </div>
+              <div>
+                <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Certificate / Document</label>
+                <input ref={scrapFileInputRef} type="file" onChange={e => setScrapFileSt(e.target.files?.[0] ?? null)} />
+                {scrapFileSt && (
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: '#107c10' }}>
+                    ✓ Ready to upload: {scrapFileSt.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Gifted details ── */}
+          {newStatus === 'Gifted' && (
+            <div style={{ borderTop: '1px solid #e1dfdd', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ fontWeight: 700, fontSize: 11, color: '#605e5c', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Gifted Details
+              </span>
+              <TextField
+                label="Gifted To *"
+                value={giftedDraftSt.GiftedTo || ''}
+                onChange={(_e, v) => setGiftedDraftSt(d => ({ ...d, GiftedTo: v || '' }))}
+              />
+              <div>
+                <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Gifted Date</label>
+                <input
+                  type="date"
+                  value={giftedDraftSt.GiftedDate ? giftedDraftSt.GiftedDate.slice(0, 10) : ''}
+                  onChange={e => setGiftedDraftSt(d => ({ ...d, GiftedDate: e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : '' }))}
+                  style={{ width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, border: '1px solid #d1d1d1', boxSizing: 'border-box' }}
+                />
+              </div>
+              <TextField
+                label="Remarks"
+                multiline
+                rows={2}
+                value={giftedDraftSt.GiftRemarks || ''}
+                onChange={(_e, v) => setGiftedDraftSt(d => ({ ...d, GiftRemarks: v || '' }))}
+              />
+              <div>
+                <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>
+                  Authorisation Letter / Document
+                </label>
+                <input ref={giftedFileInputRef} type="file" onChange={e => setGiftedFileSt(e.target.files?.[0] ?? null)} />
+                {giftedFileSt && (
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: '#107c10' }}>
+                    ✓ Ready to upload: {giftedFileSt.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Repair details ── */}
+          {newStatus === 'Repair' && (
+            <div style={{ borderTop: '1px solid #e1dfdd', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ fontWeight: 700, fontSize: 11, color: '#605e5c', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                Repair Details
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Repair Date *</label>
+                  <input
+                    type="date"
+                    value={repairDraftSt.RepairDate ? repairDraftSt.RepairDate.slice(0, 10) : ''}
+                    onChange={e => setRepairDraftSt(d => ({ ...d, RepairDate: e.target.value ? new Date(e.target.value + 'T00:00:00').toISOString() : '' }))}
+                    style={{ width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, border: '1px solid #d1d1d1', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <TextField
+                  label="Repair Vendor *"
+                  value={repairDraftSt.RepairVendor}
+                  onChange={(_e, v) => setRepairDraftSt(d => ({ ...d, RepairVendor: v || '' }))}
+                />
+                <TextField
+                  label="Issue Description *"
+                  styles={{ root: { gridColumn: '1 / -1' } }}
+                  multiline
+                  rows={2}
+                  value={repairDraftSt.IssueDescription}
+                  onChange={(_e, v) => setRepairDraftSt(d => ({ ...d, IssueDescription: v || '' }))}
+                />
+                <TextField
+                  label="Resolution"
+                  value={repairDraftSt.Resolution}
+                  onChange={(_e, v) => setRepairDraftSt(d => ({ ...d, Resolution: v || '' }))}
+                />
+                <TextField
+                  label="Repair Cost (INR)"
+                  type="number"
+                  prefix="₹"
+                  value={String(repairDraftSt.RepairCost || 0)}
+                  onChange={(_e, v) => setRepairDraftSt(d => ({ ...d, RepairCost: parseFloat(v || '0') }))}
+                />
+                <TextField
+                  label="Remarks"
+                  value={repairDraftSt.Remarks}
+                  onChange={(_e, v) => setRepairDraftSt(d => ({ ...d, Remarks: v || '' }))}
+                />
+              </div>
+              <div>
+                <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Attachment</label>
+                <input ref={repairFileInputRef} type="file" onChange={e => setRepairFileSt(e.target.files?.[0] ?? null)} />
+                {repairFileSt && (
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: '#107c10' }}>
+                    ✓ Ready to upload: {repairFileSt.name}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <TextField
-            label={`Notes${newStatus && STATUS_REQUIRES_NOTE.includes(newStatus) ? ' *' : ''}`}
-            errorMessage={noteErr}
+            label={`Notes${(newStatus === 'Lost' || newStatus === 'Stolen' || newStatus === 'Disposed') ? ' *' : ''}`}
             multiline
-            rows={3}
+            rows={2}
             value={statusNote}
             onChange={(_e, v) => setStatusNote(v || '')}
             placeholder="Reason for status change…"
           />
+
+          {noteErr && (
+            <MessageBar messageBarType={MessageBarType.error}>{noteErr}</MessageBar>
+          )}
+
           {newStatus && (
             <MessageBar messageBarType={MessageBarType.info}>
               Status will change: <strong>{asset.Status}</strong> → <strong>{newStatus}</strong>
             </MessageBar>
           )}
         </div>
+
         <DialogFooter>
-          <PrimaryButton
-            onClick={confirmStatusChange}
-            disabled={!newStatus || changing}
-          >
-            {changing ? 'Changing…' : 'Confirm'}
+          <PrimaryButton onClick={confirmStatusChange} disabled={!newStatus || changing}>
+            {changing ? 'Saving…' : 'Confirm'}
           </PrimaryButton>
-          <DefaultButton onClick={() => { setShowStatusDlg(false); setNewStatus(null); setStatusNote(''); }}>
-            Cancel
-          </DefaultButton>
+          <DefaultButton onClick={resetStatusDialog}>Cancel</DefaultButton>
         </DialogFooter>
       </Dialog>
 

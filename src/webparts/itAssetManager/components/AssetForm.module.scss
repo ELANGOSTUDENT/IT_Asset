@@ -1,83 +1,186 @@
 @import '~@microsoft/sp-office-ui-fabric-core/dist/sass/SPFabricCore.scss';
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Hybrid Executive — Design Tokens
+// ══════════════════════════════════════════════════════════════════════════════
+$blue:       #2563eb;
+$cyan:       #0284c7;
+$hdr-from:   #0b1020;
+$hdr-to:     #1e293b;
+$text-hdr:   #f1f5f9;
+$text-hdr-2: #94a3b8;
+$text-dark:  #0f172a;
+$text-mid:   #334155;
+$text-muted: #64748b;
+$border:     #e2e8f0;
+$bg-canvas:  #eef4ff;
+$bg-white:   #ffffff;
+$shadow-hdr: 0 4px 24px rgba(0,0,0,.28);
+$shadow-card: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.07);
+$shadow-footer: 0 -2px 8px rgba(0,0,0,.07);
+$r:  10px;
+$t:  0.18s ease;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Root — light form canvas
+// ══════════════════════════════════════════════════════════════════════════════
 .root {
   display: flex;
   flex-direction: column;
   min-height: 500px;
+  background: $bg-canvas;
+
+  :global {
+    .ms-Button--primary {
+      background: $blue !important;
+      border-color: $blue !important;
+      color: #fff !important;
+      border-radius: 9px !important;
+      font-weight: 600 !important;
+
+      &:hover:not(.is-disabled) {
+        background: #1d4ed8 !important;
+        border-color: #1d4ed8 !important;
+      }
+    }
+
+    .ms-Button--default {
+      border-radius: 9px !important;
+      font-weight: 500 !important;
+    }
+
+    .ms-Spinner-circle { border-top-color: $blue !important; }
+  }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Sticky dark executive header
+// ══════════════════════════════════════════════════════════════════════════════
 .header {
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 20px 24px 12px;
-  border-bottom: 1px solid $ms-color-neutralLight;
-  background: $ms-color-neutralLighterAlt;
-}
+  padding: 14px 24px 12px;
+  background: linear-gradient(135deg, $hdr-from 0%, #111827 55%, $hdr-to 100%);
+  box-shadow: $shadow-hdr;
+  position: relative;
 
-.backBtn {
-  margin-top: 2px;
-}
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, $blue, $cyan);
+    opacity: 0.6;
+    pointer-events: none;
+  }
 
-.title {
-  font-weight: 600;
-  color: $ms-color-neutralPrimary;
-}
-
-.idPreview {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 13px;
-  color: $ms-color-neutralSecondary;
-
-  i { color: $ms-color-themePrimary; }
-
-  strong {
-    font-family: 'Courier New', monospace;
-    color: $ms-color-themePrimary;
-    font-size: 14px;
+  :global(.ms-Button--icon) {
+    background: rgba(255,255,255,.10) !important;
+    border: 1px solid rgba(255,255,255,.15) !important;
+    border-radius: 7px !important;
+    i { color: $text-hdr !important; }
+    &:hover { background: rgba(255,255,255,.18) !important; }
   }
 }
 
+.backBtn { margin-top: 2px; }
+
+.title {
+  font-weight: 700;
+  color: $text-hdr;
+  letter-spacing: -0.2px;
+}
+
+// ID preview chip
+.idPreview {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: $text-hdr-2;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 6px;
+  padding: 4px 11px;
+
+  i { color: #93c5fd; }
+
+  strong {
+    font-family: 'SFMono-Regular', 'Consolas', 'Courier New', monospace;
+    color: #bfdbfe;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Scrollable form body
+// ══════════════════════════════════════════════════════════════════════════════
 .form {
   padding: 20px 24px;
   flex: 1;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Section card — white with blue left accent
+// ══════════════════════════════════════════════════════════════════════════════
 .section {
-  background: #fff;
-  border: 1px solid $ms-color-neutralLight;
-  border-radius: 4px;
-  padding: 16px;
-  margin-bottom: 16px;
+  background: $bg-white;
+  border: 1px solid $border;
+  border-radius: $r;
+  border-left: 4px solid $blue;
+  padding: 16px 20px 18px;
+  box-shadow: $shadow-card;
+  transition: box-shadow $t;
+
+  &:hover { box-shadow: 0 4px 20px rgba(0,0,0,.09), 0 2px 8px rgba(0,0,0,.06); }
 }
 
 .sectionTitle {
-  font-weight: 600;
-  font-size: 13px;
-  color: $ms-color-neutralSecondary;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  margin-bottom: 14px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 10px;
+  color: $text-mid;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid $border;
+
+  i { color: $blue; font-size: 13px; }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Validation error
+// ══════════════════════════════════════════════════════════════════════════════
 .errText {
   font-size: 12px;
-  color: $ms-color-errorText;
+  color: #dc2626;
   margin-top: 4px;
+  display: block;
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Sticky footer
+// ══════════════════════════════════════════════════════════════════════════════
 .footer {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 24px;
-  border-top: 1px solid $ms-color-neutralLight;
-  background: $ms-color-neutralLighterAlt;
+  padding: 14px 24px;
+  border-top: 1px solid $border;
+  background: $bg-white;
+  box-shadow: $shadow-footer;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
