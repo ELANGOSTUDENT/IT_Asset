@@ -57,24 +57,20 @@ export class AssetService {
     return mapAsset(item);
   }
 
-  async getNextSequenceNumber(type: string, country: string, office: string): Promise<number> {
-    const prefix = AssetIdGenerator.getPrefix(type as any, country, office);
-    console.log(`[AssetService] getNextSequenceNumber — prefix: "${prefix}"`);
+  async getNextSequenceNumber(): Promise<number> {
+    console.log('[AssetService] getNextSequenceNumber — fetching global max across all assets');
 
-    // Fetch all items matching this prefix so we can derive the true max from both
-    // SequenceNumber and the numeric suffix in Title (fallback if SequenceNumber is null).
+    // Global sequence: query all assets, find the highest sequence number across every
+    // country, office, year, and asset type. Never resets per prefix or per year.
     const items = await this._sp.web.lists
       .getByTitle(ASSETS_LIST)
-      .items.filter(`startswith(Title,'${prefix}')`)
-      .select('Title', 'SequenceNumber')
+      .items.select('Title', 'SequenceNumber')
       .top(5000)();
 
     if (!items.length) {
-      console.log(`[AssetService] No existing assets found for prefix "${prefix}" — starting at 1`);
+      console.log('[AssetService] No existing assets — starting global sequence at 1');
       return 1;
     }
-
-    console.log(`[AssetService] Found ${items.length} existing asset(s) for prefix "${prefix}"`);
 
     let maxSeq = 0;
     for (const item of items) {
@@ -82,22 +78,21 @@ export class AssetService {
       if (item.SequenceNumber != null && item.SequenceNumber > maxSeq) {
         maxSeq = item.SequenceNumber;
       }
-      // Fallback: parse numeric suffix from Title (handles null SequenceNumber)
+      // Fallback: parse numeric suffix from Title (handles both old and new formats)
       const parsed = AssetIdGenerator.parse(item.Title);
       if (parsed && parsed.sequence > maxSeq) {
-        console.log(`[AssetService] Fallback parse: Title="${item.Title}" → sequence=${parsed.sequence}`);
         maxSeq = parsed.sequence;
       }
     }
 
     const next = maxSeq + 1;
-    console.log(`[AssetService] Max SequenceNumber found: ${maxSeq} — next sequence: ${next}`);
+    console.log(`[AssetService] Global max SequenceNumber: ${maxSeq} — next: ${next}`);
     return next;
   }
 
   async addAsset(asset: Omit<IAsset, 'Id' | 'Title' | 'SequenceNumber'>): Promise<IAsset & { historyWarning?: string }> {
-    let seq = await this.getNextSequenceNumber(asset.AssetType, asset.Country, asset.OfficeCode);
-    let assetId = AssetIdGenerator.generate(asset.AssetType, asset.Country, asset.OfficeCode, seq);
+    let seq = await this.getNextSequenceNumber();
+    let assetId = AssetIdGenerator.generate(asset.Country, asset.OfficeCode, asset.AssetType, seq);
 
     // Duplicate guard: keep incrementing until the generated ID is unused.
     // Protects against stale data or concurrent creates arriving in the same second.
@@ -110,7 +105,7 @@ export class AssetService {
       if (!existing.length) break;
       console.warn(`[AssetService] Asset ID "${assetId}" already exists (attempt ${attempt + 1}) — incrementing`);
       seq++;
-      assetId = AssetIdGenerator.generate(asset.AssetType, asset.Country, asset.OfficeCode, seq);
+      assetId = AssetIdGenerator.generate(asset.Country, asset.OfficeCode, asset.AssetType, seq);
     }
 
     console.log(`[AssetService] Final generated Asset ID: "${assetId}", SequenceNumber: ${seq}`);

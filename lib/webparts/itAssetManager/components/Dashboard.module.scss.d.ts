@@ -29,6 +29,10 @@ declare const styles: {
     warrantyRow: string;
     assetLink: string;
     daysBadge: string;
+    barFillWarn: string;
+    barFillDanger: string;
+    panelCaption: string;
+    emptyMsg: string;
     footer: string;
 };
 export default styles;

@@ -9,6 +9,28 @@ All changes to this project are documented here.
 
 ---
 
+## [v2.1.0] — 2026-06-16
+
+### Changed
+- **Asset ID format** updated to ZoomRx global naming convention: `ZRX-COUNTRY-CITY-SITE-ASSETTYPE-NNNN` (e.g. `ZRX-IN-CHN-GIC-MAC-0001`). Replaces old format `IN-CHN-26-LAP-0001`. Old IDs continue to display and function correctly — no data migration required.
+- **Sequence number is now global.** Previously per type+country+office+year prefix. Now a single global counter across all assets — never resets by country, office, year, or asset type.
+- `AssetIdGenerator.generate()` — new signature `(country, officeCode, assetType, sequence)`. Produces `ZRX-{COUNTRY}-{CITY}-{OFFICE}-{TYPE}-{NNNN}`. City code derived from office code via `CITY_FROM_OFFICE` mapping — no new SharePoint column.
+- `AssetIdGenerator.parse()` — now supports both old (5-part) and new (6-part ZRX) formats. Returns `{ sequence }` only (simplified).
+- `AssetIdGenerator.getPrefix()` — removed (prefix-based sequencing eliminated).
+- `AssetService.getNextSequenceNumber()` — signature changed from `(type, country, office)` to `()`. Fetches all assets, finds global max across `SequenceNumber` and Title parse fallback.
+- `models/IAsset.ts` — `AssetType` union expanded to 21 new codes (MAC, LAP, DSK, TAB, PHN, MON, KBD, MOS, CAM, AVC, LND, HST, TVD, PRJ, SWT, FWL, WAP, RTR, SRV, UPS, OTH) plus 5 legacy codes (DTP, DOC, MOB, NET, ACC kept for backward compat). `ASSET_TYPE_LABELS` updated for all codes. Added `NEW_ASSET_TYPES`, `ALL_ASSET_TYPES`, `COUNTRY_OPTIONS`, and `OFFICE_OPTIONS` exports.
+- `AssetDetailsForm.tsx` — Country field changed from free-text to dropdown (India / United States). OfficeCode field changed from free-text to "Site / Office Code" dropdown filtered by country. Office dropdown auto-resets to first valid option when country changes.
+- `AssetForm.tsx` — Same country/office dropdown changes as AssetDetailsForm.
+- `AssetTable.tsx` — Type filter dropdown now includes all 26 codes (21 new + 5 legacy) so existing assets with old codes remain filterable.
+- `ItAssetManagerWebPart.ts` — Default `defaultOffice` changed from `'CHN'` (city code) to `'GIC'` (valid office code). Property pane label updated to "Site / Office Code".
+
+### Backward Compatibility
+- Existing assets with IDs in the old format (`IN-CHN-26-LAP-NNNN`) continue to display, open, search, filter, export, and link to attachments/history correctly.
+- Old `SequenceNumber` values on existing assets are included in the global max calculation so new sequences never collide.
+- Legacy asset type codes (DTP, DOC, MOB, NET, ACC) remain in the type union and labels — they display correctly on existing assets but are not available in the add/edit type dropdown.
+
+---
+
 ## [v2.0.0] — 2026-06-12
 
 ### Added

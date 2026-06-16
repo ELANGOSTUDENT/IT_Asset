@@ -10,7 +10,7 @@ export declare class AssetService {
     constructor(context: WebPartContext);
     getAssets(): Promise<IAsset[]>;
     getAssetById(id: number): Promise<IAsset>;
-    getNextSequenceNumber(type: string, country: string, office: string): Promise<number>;
+    getNextSequenceNumber(): Promise<number>;
     addAsset(asset: Omit<IAsset, 'Id' | 'Title' | 'SequenceNumber'>): Promise<IAsset & {
         historyWarning?: string;
     }>;

@@ -16,6 +16,7 @@ import {
 import {
   IAsset, AssetType, AssetStatus, AssetStatus as AS,
   ASSET_TYPE_LABELS, DEPT_OPTIONS, LOCATION_OPTIONS,
+  NEW_ASSET_TYPES, COUNTRY_OPTIONS, OFFICE_OPTIONS,
 } from '../models/IAsset';
 import { IRepairEntry, IRepairEntryDraft, emptyRepairDraft } from '../models/IRepairEntry';
 import { AssetService } from '../services/AssetService';
@@ -228,7 +229,7 @@ const RepairDialog: React.FC<IRepairDialogProps> = ({ open, draft, saving, onDra
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-const TYPE_OPTIONS = (['LAP', 'MAC', 'DTP', 'MON', 'DOC', 'MOB', 'NET', 'ACC'] as AssetType[])
+const TYPE_OPTIONS = NEW_ASSET_TYPES
   .map(t => ({ value: t, label: `${t} – ${ASSET_TYPE_LABELS[t]}` }));
 
 const INITIAL_STATUS_OPTIONS: { value: AssetStatus; label: string }[] = [
@@ -239,7 +240,7 @@ const INITIAL_STATUS_OPTIONS: { value: AssetStatus; label: string }[] = [
 const empty = (): Partial<IAsset> => ({
   SerialNumber: '', Model: '', Vendor: '', PONumber: '', InvoiceNumber: '',
   Cost: 0, PurchaseDate: '', WarrantyExpiry: '', Remarks: '',
-  Status: 'Procured', Country: 'IN', OfficeCode: 'CHN',
+  Status: 'Procured', Country: 'IN', OfficeCode: 'GIC',
 });
 
 const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
@@ -269,14 +270,14 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
   const set = useCallback(<K extends keyof IAsset>(key: K, value: IAsset[K]) =>
     setForm(f => ({ ...f, [key]: value })), []);
 
-  // Live ID preview
+  // Live ID preview — sequence is global so just fetch once per field change
   useEffect(() => {
     if (isEdit || !form.AssetType || !form.Country || !form.OfficeCode) {
       setPreviewId(''); return;
     }
     setLoadingId(true);
-    assetService.getNextSequenceNumber(form.AssetType, form.Country, form.OfficeCode)
-      .then(seq => setPreviewId(AssetIdGenerator.generate(form.AssetType!, form.Country!, form.OfficeCode!, seq)))
+    assetService.getNextSequenceNumber()
+      .then(seq => setPreviewId(AssetIdGenerator.generate(form.Country!, form.OfficeCode!, form.AssetType!, seq)))
       .catch(() => setPreviewId('—'))
       .finally(() => setLoadingId(false));
   }, [form.AssetType, form.Country, form.OfficeCode, isEdit, assetService]);
@@ -475,21 +476,31 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
               errorMessage={errors.Vendor}
             />
 
-            <TextField
-              label="Country Code *"
-              value={form.Country || ''}
+            <Dropdown
+              label="Country *"
+              selectedKey={form.Country || ''}
               disabled={isEdit}
-              onChange={(_e, v) => set('Country', (v || '').toUpperCase())}
-              maxLength={5}
+              options={[
+                { key: '', text: 'Select country…' },
+                ...COUNTRY_OPTIONS.map(c => ({ key: c.key, text: c.text })),
+              ]}
+              onChange={(_e, option) => {
+                const country = option?.key as string;
+                const firstOffice = OFFICE_OPTIONS[country]?.[0]?.key || '';
+                setForm(f => ({ ...f, Country: country, OfficeCode: firstOffice }));
+              }}
               errorMessage={errors.Country}
             />
 
-            <TextField
-              label="Office Code *"
-              value={form.OfficeCode || ''}
-              disabled={isEdit}
-              onChange={(_e, v) => set('OfficeCode', (v || '').toUpperCase())}
-              maxLength={5}
+            <Dropdown
+              label="Site / Office Code *"
+              selectedKey={form.OfficeCode || ''}
+              disabled={isEdit || !form.Country}
+              options={[
+                { key: '', text: form.Country ? 'Select site…' : 'Select country first…' },
+                ...(OFFICE_OPTIONS[form.Country || ''] || []).map(o => ({ key: o.key, text: o.text })),
+              ]}
+              onChange={(_e, option) => set('OfficeCode', option?.key as string)}
               errorMessage={errors.OfficeCode}
             />
           </div>

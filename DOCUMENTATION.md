@@ -232,14 +232,16 @@ This form is used to register a new asset or update an existing one.
 
 As soon as you select an Asset Type, the form shows a preview of what the Asset ID will be. This ID is confirmed and permanently assigned when you click Save.
 
-Example: Select Type = LAP → Preview shows `IN-CHN-26-LAP-0042`
+Example: Select Type = MAC, Country = IN, Office = GIC → Preview shows `ZRX-IN-CHN-GIC-MAC-0042`
 
 ### 6.3 All Form Fields
 
 #### Identity
 | Field | Required | Notes |
 |-------|----------|-------|
-| Asset Type | Yes | LAP, MAC, DTP, MON, DOC, MOB, NET, ACC |
+| Asset Type | Yes | MAC, LAP, DSK, TAB, PHN, MON, KBD, MOS, CAM, AVC, LND, HST, TVD, PRJ, SWT, FWL, WAP, RTR, SRV, UPS, OTH |
+| Country | Yes | India (IN) or United States (US) |
+| Site / Office Code | Yes | GIC, UWB, UWK, NYC, BOS — filtered by selected country |
 | Serial Number | Yes | Physical serial number |
 | Model | Yes | e.g. Dell Latitude 5540 |
 | Vendor | Yes | e.g. Dell India |
@@ -349,19 +351,69 @@ When the user clicks "Change Status":
 Every asset gets a unique ID that is automatically created when the asset is first saved. The format is:
 
 ```
-IN - CHN - 26 - LAP - 0001
-│     │    │    │      │
-│     │    │    │      └── Sequence number (4 digits, per type per office per year)
-│     │    │    └───────── Asset type code
-│     │    └────────────── Last 2 digits of the year
-│     └─────────────────── Office code (configurable)
-└───────────────────────── Country code (configurable)
+ZRX - IN - CHN - GIC - MAC - 0001
+ │     │    │     │     │      │
+ │     │    │     │     │      └── Global sequence (4 digits, never resets)
+ │     │    │     │     └───────── Asset type code
+ │     │    │     └─────────────── Site / Office code
+ │     │    └───────────────────── City code (derived from office code — not stored separately)
+ │     └────────────────────────── Country code
+ └──────────────────────────────── ZoomRx org code (always ZRX)
 ```
 
-**How the sequence number works:**  
-When a new laptop (LAP) is added, the system looks at all existing IDs that start with `IN-CHN-26-LAP-` and finds the highest sequence number. The new asset gets that number + 1. This ensures IDs are never duplicated.
+**Segments:**
 
-**The country and office codes** are set by the IT admin in the web part settings (see Section 13). They default to IN and CHN.
+| # | Segment | Values |
+|---|---------|--------|
+| 1 | Org Code | Always `ZRX` |
+| 2 | Country | `IN` (India), `US` (United States) |
+| 3 | City | `CHN` (Chennai), `GRG` (Gurgaon), `PUN` (Pune), `NYC` (New York), `BOS` (Boston) — derived from office code |
+| 4 | Site / Office | `GIC` (Global Infocity Chennai), `UWB` (UrbanWrk Gurgaon), `UWK` (UrbanWrk Pune), `NYC` (New York), `BOS` (Boston) |
+| 5 | Asset Type | See asset type code table below |
+| 6 | Sequence | 4-digit zero-padded global counter |
+
+**How the sequence number works:**  
+The sequence is **global** across all assets — it never resets by country, office, year, or asset type. When a new asset is created, the system finds the highest sequence number across every existing asset (reading the `SequenceNumber` field, with a fallback parse of the `Title` field) and assigns that number + 1. A duplicate guard increments further if there is a race condition.
+
+**Legacy asset IDs** (format: `IN-CHN-26-LAP-0001`) continue to display and function correctly. The parse logic supports both old (5-part) and new (6-part ZRX) formats. Their sequence numbers are included in the global max calculation.
+
+**Office → City mapping (no CityCode SharePoint column needed):**
+
+| Office Code | City Code | Location |
+|-------------|-----------|----------|
+| GIC | CHN | Global Infocity, Chennai |
+| UWB | GRG | UrbanWrk — Baani The Statement, Gurgaon |
+| UWK | PUN | UrbanWrk — Konkord Towers, Pune |
+| NYC | NYC | US — New York Office |
+| BOS | BOS | US — Boston Office |
+
+**Asset type codes:**
+
+| Code | Description |
+|------|-------------|
+| MAC | MacBook |
+| LAP | Laptop |
+| DSK | Desktop |
+| TAB | Tablet |
+| PHN | Mobile Phone |
+| MON | Monitor |
+| KBD | Keyboard |
+| MOS | Mouse |
+| CAM | Webcam / Camera |
+| AVC | Audio/Video Conferencing Device |
+| LND | Landline / IP Phone |
+| HST | Headset |
+| TVD | TV / Large-format Display |
+| PRJ | Projector |
+| SWT | Network Switch |
+| FWL | Firewall |
+| WAP | Wireless Access Point |
+| RTR | Router |
+| SRV | Server |
+| UPS | UPS / Power Device |
+| OTH | Other IT Hardware |
+
+Legacy codes (existing assets only — not selectable for new assets): `DTP`, `DOC`, `MOB`, `NET`, `ACC`.
 
 ---
 
@@ -556,10 +608,10 @@ This is the main list. One row = one physical asset.
 
 | Column | Type | Required | Description |
 |--------|------|----------|-------------|
-| Title | Text | Yes | Asset ID (auto-generated, e.g. IN-CHN-26-LAP-0001) |
+| Title | Text | Yes | Asset ID (auto-generated). New format: `ZRX-IN-CHN-GIC-MAC-0001`. Legacy: `IN-CHN-26-LAP-0001` |
 | SerialNumber | Text | Yes | Physical serial number of the device |
-| Model | Text | Yes | Device model name (e.g. Dell Latitude 5540) |
-| Vendor | Text | Yes | Supplier / brand (e.g. Dell India) |
+| Model | Text | Yes | Device model name (e.g. MacBook Pro M3) |
+| Vendor | Text | Yes | Supplier / brand (e.g. Apple India) |
 | PONumber | Text | No | Purchase order reference number |
 | InvoiceNumber | Text | No | Supplier invoice number |
 | Cost | Currency | No | Purchase cost in INR |
@@ -569,12 +621,12 @@ This is the main list. One row = one physical asset.
 | AssignedToEmail | Text | No | Email address of the assigned employee |
 | Department | Text | No | Department (from preset list) |
 | AssetLocation | Text | No | Physical location (from preset list) |
-| Country | Text | No | Country code (default: IN) |
-| OfficeCode | Text | No | Office code (default: CHN) |
+| Country | Text | No | Country code: `IN` or `US` |
+| OfficeCode | Text | No | Site/office code: `GIC`, `UWB`, `UWK`, `NYC`, or `BOS`. City is derived in code from this value. |
 | Status | Choice | Yes | Current lifecycle status |
-| AssetType | Choice | Yes | Type code (LAP, MAC, DTP, MON, DOC, MOB, NET, ACC) |
+| AssetType | Choice | Yes | 3-letter asset type code (MAC, LAP, DSK, TAB, PHN, MON, KBD, MOS, CAM, AVC, LND, HST, TVD, PRJ, SWT, FWL, WAP, RTR, SRV, UPS, OTH) |
 | Remarks | Note | No | Freeform notes |
-| SequenceNumber | Number | No | Internal — used for Asset ID generation, do not edit manually |
+| SequenceNumber | Number | No | Global sequence counter. Never resets. Do not edit manually. |
 
 ### List 2: Asset_History
 
@@ -898,7 +950,7 @@ The solution leverages SharePoint site features to declaratively provision lists
 
 ### 1. `IT_Assets` (Primary Table)
 Tracks the current state of each physical or virtual IT Asset.
-* **Title:** Repurposed as the unique Asset ID (e.g., `IN-CHN-26-LAP-0001`).
+* **Title:** Repurposed as the unique Asset ID. New format: `ZRX-IN-CHN-GIC-MAC-0001`. Legacy: `IN-CHN-26-LAP-0001`.
 * **SerialNumber:** Required text field.
 * **Model / Vendor:** Required metadata.
 * **PONumber / InvoiceNumber:** Audit reference numbers.
@@ -907,16 +959,12 @@ Tracks the current state of each physical or virtual IT Asset.
 * **WarrantyExpiry:** DateTime field (Date only) indicating hardware warranty expiry.
 * **AssignedTo / AssignedToEmail:** Text attributes capturing assignee.
 * **Department / AssetLocation:** Segment attributes.
-* **Country / OfficeCode:** Defaults to `IN` / `CHN`.
-* **Status:** Choice field mapping to Asset Lifecycle (includes `Validation`).
-* **AssetType:** Choice field (LAP, MAC, DTP, MON, DOC, MOB, NET, ACC).
+* **Country:** `IN` (India) or `US` (United States).
+* **OfficeCode:** Site/office code — `GIC`, `UWB`, `UWK`, `NYC`, or `BOS`. City code is derived in code, no separate CityCode column.
+* **Status:** Choice field mapping to Asset Lifecycle.
+* **AssetType:** Choice field. New codes: MAC, LAP, DSK, TAB, PHN, MON, KBD, MOS, CAM, AVC, LND, HST, TVD, PRJ, SWT, FWL, WAP, RTR, SRV, UPS, OTH. Legacy: DTP, DOC, MOB, NET, ACC.
 * **Remarks:** Multi-line text for generic comments.
-* **SequenceNumber\_New:** Integer sequence identifier for generating sequential Asset IDs.
-* **ReceivedDate / ReceivedBy:** Date and person who received the asset.
-* **ValidationStatus:** Choice field (Pending, Validated, Rejected).
-* **PhysicalCondition:** Choice field (New, Good, Damaged).
-* **ValidationComments:** Multi-line notes from the receiving/validation process.
-* **ValidationDate / ValidatedBy:** Date and person who completed validation.
+* **SequenceNumber:** Integer. Global sequence counter — never resets per country/office/year/type. Every new asset increments by 1.
 
 ### 2. `Asset_History` (Audit Log Table)
 An immutable ledger tracking every modification state.
@@ -976,7 +1024,7 @@ File attachment library organized by category folder. Repair reports are the onl
 
 ### `AssetService.ts`
 Uses PnPjs v3 to perform SharePoint data operations.
-* **Sequential Generation:** Dynamically queries the `IT_Assets` list using the `startswith` OData filter for the current Prefix (e.g., `IN-CHN-26-LAP-`) and returns the highest `SequenceNumber` to safely calculate the next serial increment without collisions.
+* **Sequential Generation:** `getNextSequenceNumber()` fetches all `IT_Assets` rows (Title + SequenceNumber) and returns the global max + 1. No prefix filter — the sequence is global across all countries, offices, years, and asset types. Parses both new (`ZRX-…`) and legacy (`IN-CHN-…`) Title formats as a fallback when `SequenceNumber` is null.
 * **Dashboard Aggregation:** Performs analytical groupings on all asset rows to compute counts by Status, Type, and Department.
 * **Warranty Pipeline:** Pulls active assets expiring within the customized day window (default 90 days) for proactive IT alerts.
 * **Assignment Snapshot Sync:** `updateAssetAssignmentSnapshot()` updates `AssignedTo`, `AssignedToEmail`, `Department`, `AssetLocation`, and `DateOfAssignment` on `IT_Assets` to keep the current-assignment view in sync.

@@ -353,6 +353,45 @@ $t:  0.18s ease;
   // Background/color set inline in TSX
 }
 
+// ── Bar fill variants — warranty risk ─────────────────────────────────────────
+.barFillWarn {
+  height: 100%;
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+  border-radius: 4px;
+  min-width: 4px;
+  animation: barGrow 0.55s ease both;
+
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+.barFillDanger {
+  height: 100%;
+  background: linear-gradient(90deg, #b91c1c, #ef4444);
+  border-radius: 4px;
+  min-width: 4px;
+  animation: barGrow 0.55s ease both;
+
+  @media (prefers-reduced-motion: reduce) { animation: none; }
+}
+
+// ── Panel caption — small note below a panel ──────────────────────────────────
+.panelCaption {
+  margin-top: 14px;
+  font-size: 10px;
+  color: $text-label;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
+// ── Empty state inside a panel ────────────────────────────────────────────────
+.emptyMsg {
+  display: block;
+  padding: 16px 0 4px;
+  font-size: 13px;
+  color: $text-muted;
+  font-style: italic;
+}
+
 // ── Footer CTA ────────────────────────────────────────────────────────────────
 .footer {
   margin-top: 8px;

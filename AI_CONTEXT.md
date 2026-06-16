@@ -9,7 +9,7 @@ An internal IT asset tracking application built specifically for **ZoomRx Chenna
 
 * **UAT Site relative URL:** `/sites/IT-Tech`
 * **Target Pages:** `IT-Asset-UAT.aspx`
-* **Location Scope:** `IN` (India) & `CHN` (Chennai)
+* **Location Scope:** `IN` (India) & `US` (United States). Office codes: `GIC` (Chennai), `UWB` (Gurgaon), `UWK` (Pune), `NYC` (New York), `BOS` (Boston).
 
 ---
 
@@ -29,7 +29,7 @@ Declaratively provisioned via standard elements XML bindings (`elements.xml`).
 
 ### List: `IT_Assets`
 Primary asset records store.
-* **Title:** Repurposed as Unique Asset ID (`COUNTRY-OFFICE-YY-TYPE-NNNN`, e.g., `IN-CHN-26-LAP-0001`).
+* **Title:** Repurposed as Unique Asset ID. New format: `ZRX-COUNTRY-CITY-SITE-ASSETTYPE-NNNN` (e.g., `ZRX-IN-CHN-GIC-MAC-0001`). Legacy format (existing assets): `IN-CHN-26-LAP-0001`.
 * **SerialNumber:** Required string.
 * **Model / Vendor:** Required string.
 * **PONumber / InvoiceNumber:** Optional string.
@@ -37,10 +37,11 @@ Primary asset records store.
 * **PurchaseDate / WarrantyExpiry:** DateOnly fields.
 * **AssignedTo / AssignedToEmail:** Details of current owner.
 * **Department / AssetLocation:** Metadata tags.
-* **Country / OfficeCode:** Default values `IN` / `CHN`.
-* **Status:** Choice mapping (Procured, Validation, Stock, Active, Repair, Transferred, Gifted, Lost, Stolen, Scrapped, Disposed).
-* **AssetType:** Choice (LAP, MAC, DTP, MON, DOC, MOB, NET, ACC).
-* **SequenceNumber\_New:** Counter for generating sequential IDs per prefix.
+* **Country:** `IN` (India) or `US` (United States).
+* **OfficeCode:** Site/office code — `GIC`, `UWB`, `UWK`, `NYC`, or `BOS`. City code is derived in code from OfficeCode (no CityCode SP column needed).
+* **Status:** Choice mapping (Procured, Stock, Active, Repair, Gifted, Lost, Stolen, Scrapped, Disposed).
+* **AssetType:** 3-letter code. New codes: MAC, LAP, DSK, TAB, PHN, MON, KBD, MOS, CAM, AVC, LND, HST, TVD, PRJ, SWT, FWL, WAP, RTR, SRV, UPS, OTH. Legacy (existing assets only): DTP, DOC, MOB, NET, ACC.
+* **SequenceNumber:** Global counter — never resets by country/office/type/year. Every new asset increments by 1 across all assets.
 * **ReceivedDate / ReceivedBy:** Receiving intake fields.
 * **ValidationStatus:** Choice (Pending, Validated, Rejected).
 * **PhysicalCondition:** Choice (New, Good, Damaged).
@@ -115,7 +116,7 @@ Located under `src/webparts/itAssetManager/components/`:
 Located under `src/webparts/itAssetManager/services/`:
 * **`AssetService.ts`:**
   - Standard CRUD.
-  - Generates next sequence number per type/prefix by performing a `startswith` prefix query on `IT_Assets` and returning `Max(SequenceNumber) + 1`.
+  - `getNextSequenceNumber()`: Fetches all `IT_Assets` rows (Title + SequenceNumber), finds global max across all assets (not per prefix), returns max + 1. Parses both new (ZRX-…) and old (IN-CHN-…) formats from Title as fallback when SequenceNumber is null.
   - Aggregates status, type, department, and warranty-expiration stats in memory.
   - Standardizes status updates and logging actions.
 * **`AssetRepairService.ts`:**

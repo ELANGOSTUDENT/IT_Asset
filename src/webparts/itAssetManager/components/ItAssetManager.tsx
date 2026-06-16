@@ -214,7 +214,6 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
       {view === 'dashboard' && (
         <Dashboard
           assets={assets}
-          assetService={svc}
           onViewAll={() => { setView('list'); setPivotKey('list'); }}
           onViewAsset={openDetail}
         />

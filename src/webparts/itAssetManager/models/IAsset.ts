@@ -9,11 +9,17 @@ export type AssetStatus =
   | 'Scrapped'
   | 'Disposed';
 
-export type AssetType = 'LAP' | 'MAC' | 'DTP' | 'MON' | 'DOC' | 'MOB' | 'NET' | 'ACC';
+export type AssetType =
+  // Current codes (ZRX naming convention)
+  | 'MAC' | 'LAP' | 'DSK' | 'TAB' | 'PHN' | 'MON' | 'KBD' | 'MOS' | 'CAM'
+  | 'AVC' | 'LND' | 'HST' | 'TVD' | 'PRJ' | 'SWT' | 'FWL' | 'WAP' | 'RTR'
+  | 'SRV' | 'UPS' | 'OTH'
+  // Legacy codes — existing assets only, not available for new assets
+  | 'DTP' | 'DOC' | 'MOB' | 'NET' | 'ACC';
 
 export interface IAsset {
   Id?: number;
-  Title: string;             // AssetId: IN-CHN-26-LAP-0001
+  Title: string;             // AssetId: ZRX-IN-CHN-GIC-MAC-0001
   SerialNumber: string;
   Model: string;
   Vendor: string;
@@ -55,14 +61,66 @@ export const ASSET_STATUS_TRANSITIONS: Record<AssetStatus, AssetStatus[]> = {
 export const STATUS_REQUIRES_NOTE: AssetStatus[] = ['Lost', 'Stolen', 'Gifted', 'Disposed'];
 
 export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
-  LAP: 'Laptop',
+  // Current codes
   MAC: 'MacBook',
-  DTP: 'Desktop',
+  LAP: 'Laptop',
+  DSK: 'Desktop',
+  TAB: 'Tablet',
+  PHN: 'Mobile Phone',
   MON: 'Monitor',
+  KBD: 'Keyboard',
+  MOS: 'Mouse',
+  CAM: 'Webcam / Camera',
+  AVC: 'Audio/Video Conferencing Device',
+  LND: 'Landline / IP Phone',
+  HST: 'Headset',
+  TVD: 'TV / Large-format Display',
+  PRJ: 'Projector',
+  SWT: 'Network Switch',
+  FWL: 'Firewall',
+  WAP: 'Wireless Access Point',
+  RTR: 'Router',
+  SRV: 'Server',
+  UPS: 'UPS / Power Device',
+  OTH: 'Other IT Hardware',
+  // Legacy codes (backward compat — for assets created before ZRX naming convention)
+  DTP: 'Desktop',
   DOC: 'Docking Station',
   MOB: 'Mobile Phone',
   NET: 'Network Device',
   ACC: 'Accessory',
+};
+
+// New asset type codes (excludes legacy codes — used in add/edit dropdowns)
+export const NEW_ASSET_TYPES: AssetType[] = [
+  'MAC', 'LAP', 'DSK', 'TAB', 'PHN', 'MON', 'KBD', 'MOS', 'CAM',
+  'AVC', 'LND', 'HST', 'TVD', 'PRJ', 'SWT', 'FWL', 'WAP', 'RTR',
+  'SRV', 'UPS', 'OTH',
+];
+
+// All known asset type codes (new + legacy — used in filter dropdowns)
+export const ALL_ASSET_TYPES: AssetType[] = [
+  ...NEW_ASSET_TYPES,
+  'DTP', 'DOC', 'MOB', 'NET', 'ACC',
+];
+
+// Country options
+export const COUNTRY_OPTIONS = [
+  { key: 'IN', text: 'India (IN)' },
+  { key: 'US', text: 'United States (US)' },
+] as const;
+
+// Site / Office Code options per country
+export const OFFICE_OPTIONS: Record<string, { key: string; text: string }[]> = {
+  IN: [
+    { key: 'GIC', text: 'GIC — Global Infocity, Chennai' },
+    { key: 'UWB', text: 'UWB — UrbanWrk — Baani The Statement, Gurgaon' },
+    { key: 'UWK', text: 'UWK — UrbanWrk — Konkord Towers, Pune' },
+  ],
+  US: [
+    { key: 'NYC', text: 'NYC — US — New York Office' },
+    { key: 'BOS', text: 'BOS — US — Boston Office' },
+  ],
 };
 
 export const STATUS_BADGE_COLORS: Record<AssetStatus, { bg: string; text: string }> = {

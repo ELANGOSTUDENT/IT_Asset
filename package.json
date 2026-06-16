@@ -1,6 +1,6 @@
 {
   "name": "it-asset-manager",
-  "version": "1.10.5",
+  "version": "1.10.7",
   "private": true,
   "engines": {
     "node": ">=18.17.1 <19.0.0"

@@ -6,7 +6,7 @@ import {
   Stack, PrimaryButton, DefaultButton, IconButton, CommandBar, ICommandBarItemProps,
   Spinner, SpinnerSize, Text, Icon,
 } from '@fluentui/react';
-import { IAsset, AssetStatus, AssetType, ASSET_TYPE_LABELS, STATUS_BADGE_COLORS } from '../models/IAsset';
+import { IAsset, AssetStatus, AssetType, ASSET_TYPE_LABELS, STATUS_BADGE_COLORS, ALL_ASSET_TYPES, OFFICE_OPTIONS } from '../models/IAsset';
 import { AssetIdGenerator } from '../utils/AssetIdGenerator';
 import styles from './AssetTable.module.scss';
 
@@ -27,9 +27,39 @@ const STATUS_OPTIONS: IDropdownOption[] = [
 
 const TYPE_OPTIONS: IDropdownOption[] = [
   { key: '', text: 'All Types' },
-  ...(['LAP','MAC','DTP','MON','DOC','MOB','NET','ACC'] as AssetType[])
-    .map(t => ({ key: t, text: `${t} – ${ASSET_TYPE_LABELS[t]}` })),
+  ...ALL_ASSET_TYPES.map(t => ({ key: t, text: `${t} – ${ASSET_TYPE_LABELS[t]}` })),
 ];
+
+const COUNTRY_FILTER_OPTIONS: IDropdownOption[] = [
+  { key: 'all', text: 'All Countries' },
+  { key: 'IN',  text: 'India' },
+  { key: 'US',  text: 'United States' },
+];
+
+// Compact labels for the filter bar (OFFICE_OPTIONS labels are longer, suited for forms).
+const OFFICE_FILTER_LABELS: Record<string, string> = {
+  GIC: 'GIC — Chennai',
+  UWB: 'UWB — Gurgaon',
+  UWK: 'UWK — Pune',
+  NYC: 'NYC — New York',
+  BOS: 'BOS — Boston',
+};
+
+function getOfficeFilterOptions(country: string): IDropdownOption[] {
+  if (country === 'IN') {
+    return [
+      { key: 'all', text: 'All India Offices' },
+      ...OFFICE_OPTIONS['IN'].map(o => ({ key: o.key, text: OFFICE_FILTER_LABELS[o.key] || o.text })),
+    ];
+  }
+  if (country === 'US') {
+    return [
+      { key: 'all', text: 'All US Offices' },
+      ...OFFICE_OPTIONS['US'].map(o => ({ key: o.key, text: OFFICE_FILTER_LABELS[o.key] || o.text })),
+    ];
+  }
+  return [];
+}
 
 const StatusBadge: React.FC<{ status: AssetStatus }> = ({ status }) => {
   const colors = STATUS_BADGE_COLORS[status] || { bg: '#ebebeb', text: '#333' };
@@ -41,12 +71,14 @@ const StatusBadge: React.FC<{ status: AssetStatus }> = ({ status }) => {
 };
 
 const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onView, onEdit, onRefresh }) => {
-  const [search,       setSearch]       = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('');
-  const [filterType,   setFilterType]   = useState<string>('');
-  const [filterDept,   setFilterDept]   = useState<string>('');
-  const [sortCol,      setSortCol]      = useState<string>('Title');
-  const [sortAsc,      setSortAsc]      = useState(true);
+  const [search,         setSearch]         = useState('');
+  const [filterStatus,   setFilterStatus]   = useState<string>('');
+  const [filterType,     setFilterType]     = useState<string>('');
+  const [filterDept,     setFilterDept]     = useState<string>('');
+  const [countryFilter,  setCountryFilter]  = useState<string>('all');
+  const [officeFilter,   setOfficeFilter]   = useState<string>('all');
+  const [sortCol,        setSortCol]        = useState<string>('Title');
+  const [sortAsc,        setSortAsc]        = useState(true);
 
   const deptOptions: IDropdownOption[] = useMemo(() => {
     const depts = Array.from(new Set(assets.map(a => a.Department).filter(Boolean))).sort();
@@ -60,6 +92,10 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
         if (filterStatus && a.Status !== filterStatus) return false;
         if (filterType   && a.AssetType !== filterType) return false;
         if (filterDept   && a.Department !== filterDept) return false;
+        if (countryFilter !== 'all') {
+          if (a.Country !== countryFilter) return false;
+          if (officeFilter !== 'all' && a.OfficeCode !== officeFilter) return false;
+        }
         if (q) {
           return (
             a.Title?.toLowerCase().includes(q) ||
@@ -77,7 +113,18 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
         const bv = b[sortCol] || '';
         return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
       });
-  }, [assets, search, filterStatus, filterType, filterDept, sortCol, sortAsc]);
+  }, [assets, search, filterStatus, filterType, filterDept, countryFilter, officeFilter, sortCol, sortAsc]);
+
+  const hasActiveFilters = !!(search || filterStatus || filterType || filterDept || countryFilter !== 'all');
+
+  const clearAllFilters = () => {
+    setSearch('');
+    setFilterStatus('');
+    setFilterType('');
+    setFilterDept('');
+    setCountryFilter('all');
+    setOfficeFilter('all');
+  };
 
   const exportCSV = () => {
     const headers = ['Asset ID','Serial Number','Model','Vendor','Type','Status','Assigned To','Department','Location','Purchase Date','Warranty Expiry','Cost (INR)','Remarks'];
@@ -195,11 +242,31 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
           className={styles.filterDrop}
           placeholder="Filter by Department"
         />
-        {(search || filterStatus || filterType || filterDept) && (
+        <Dropdown
+          options={COUNTRY_FILTER_OPTIONS}
+          selectedKey={countryFilter}
+          onChange={(_e, o) => {
+            const country = o?.key as string || 'all';
+            setCountryFilter(country);
+            setOfficeFilter('all');
+          }}
+          className={styles.filterDrop}
+          placeholder="Filter by Country"
+        />
+        {countryFilter !== 'all' && (
+          <Dropdown
+            options={getOfficeFilterOptions(countryFilter)}
+            selectedKey={officeFilter}
+            onChange={(_e, o) => setOfficeFilter((o?.key as string) || 'all')}
+            className={styles.filterDrop}
+            placeholder="Filter by Site / Office"
+          />
+        )}
+        {hasActiveFilters && (
           <DefaultButton
             text="Clear"
             iconProps={{ iconName: 'ClearFilter' }}
-            onClick={() => { setSearch(''); setFilterStatus(''); setFilterType(''); setFilterDept(''); }}
+            onClick={clearAllFilters}
           />
         )}
       </Stack>

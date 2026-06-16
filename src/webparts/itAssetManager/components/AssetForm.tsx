@@ -8,7 +8,7 @@ import {
   Spinner, SpinnerSize, Text, Icon,
   Label,
 } from '@fluentui/react';
-import { IAsset, AssetType, AssetStatus, ASSET_TYPE_LABELS } from '../models/IAsset';
+import { IAsset, AssetType, AssetStatus, ASSET_TYPE_LABELS, NEW_ASSET_TYPES, COUNTRY_OPTIONS, OFFICE_OPTIONS } from '../models/IAsset';
 import { AssetService } from '../services/AssetService';
 import { AssetIdGenerator } from '../utils/AssetIdGenerator';
 import styles from './AssetForm.module.scss';
@@ -22,7 +22,7 @@ interface IAssetFormProps {
   onCancel: () => void;
 }
 
-const TYPE_OPTIONS: IDropdownOption[] = (['LAP','MAC','DTP','MON','DOC','MOB','NET','ACC'] as AssetType[])
+const TYPE_OPTIONS: IDropdownOption[] = NEW_ASSET_TYPES
   .map(t => ({ key: t, text: `${t} – ${ASSET_TYPE_LABELS[t]}` }));
 
 const INITIAL_STATUS_OPTIONS: IDropdownOption[] = (['Procured', 'Stock'] as AssetStatus[])
@@ -46,7 +46,7 @@ const empty: Partial<IAsset> = {
   Cost: 0, PurchaseDate: '', WarrantyExpiry: '',
   AssignedTo: '', AssignedToEmail: '',
   Department: '', AssetLocation: '', Remarks: '',
-  Status: 'Procured', AssetType: undefined as any, Country: 'IN', OfficeCode: 'CHN',
+  Status: 'Procured', AssetType: undefined as any, Country: 'IN', OfficeCode: 'GIC',
 };
 
 const AssetForm: React.FC<IAssetFormProps> = ({ asset, defaultCountry, defaultOffice, assetService, onSave, onCancel }) => {
@@ -64,9 +64,9 @@ const AssetForm: React.FC<IAssetFormProps> = ({ asset, defaultCountry, defaultOf
       return;
     }
     setLoadingId(true);
-    assetService.getNextSequenceNumber(form.AssetType, form.Country!, form.OfficeCode!)
+    assetService.getNextSequenceNumber()
       .then(seq => {
-        setPreviewId(AssetIdGenerator.generate(form.AssetType!, form.Country!, form.OfficeCode!, seq));
+        setPreviewId(AssetIdGenerator.generate(form.Country!, form.OfficeCode!, form.AssetType!, seq));
       })
       .catch(() => setPreviewId('—'))
       .finally(() => setLoadingId(false));
@@ -148,24 +148,34 @@ const AssetForm: React.FC<IAssetFormProps> = ({ asset, defaultCountry, defaultOf
                 />
               </Stack.Item>
             )}
-            <Stack.Item grow styles={{ root: { minWidth: 120 } }}>
-              <TextField
-                label="Country Code *"
-                value={form.Country || ''}
-                onChange={(_e, v) => set('Country', v?.toUpperCase())}
-                maxLength={5}
-                errorMessage={errors.Country}
+            <Stack.Item grow styles={{ root: { minWidth: 160 } }}>
+              <Dropdown
+                label="Country *"
+                selectedKey={form.Country || ''}
                 disabled={isEdit}
+                options={[
+                  { key: '', text: 'Select country…' },
+                  ...COUNTRY_OPTIONS.map(c => ({ key: c.key, text: c.text })),
+                ]}
+                onChange={(_e, option) => {
+                  const country = option?.key as string;
+                  const firstOffice = OFFICE_OPTIONS[country]?.[0]?.key || '';
+                  setForm(f => ({ ...f, Country: country, OfficeCode: firstOffice }));
+                }}
+                errorMessage={errors.Country}
               />
             </Stack.Item>
-            <Stack.Item grow styles={{ root: { minWidth: 120 } }}>
-              <TextField
-                label="Office Code *"
-                value={form.OfficeCode || ''}
-                onChange={(_e, v) => set('OfficeCode', v?.toUpperCase())}
-                maxLength={5}
+            <Stack.Item grow styles={{ root: { minWidth: 240 } }}>
+              <Dropdown
+                label="Site / Office Code *"
+                selectedKey={form.OfficeCode || ''}
+                disabled={isEdit || !form.Country}
+                options={[
+                  { key: '', text: form.Country ? 'Select site…' : 'Select country first…' },
+                  ...(OFFICE_OPTIONS[form.Country || ''] || []).map(o => ({ key: o.key, text: o.text })),
+                ]}
+                onChange={(_e, option) => set('OfficeCode', option?.key as string)}
                 errorMessage={errors.OfficeCode}
-                disabled={isEdit}
               />
             </Stack.Item>
           </Stack>

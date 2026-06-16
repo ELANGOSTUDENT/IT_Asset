@@ -1,20 +1,20 @@
-import { AssetType } from '../models/IAsset';
 export declare class AssetIdGenerator {
     /**
-     * Generates an Asset ID in the format: COUNTRY-OFFICE-YY-TYPE-NNNN
-     * Example: IN-CHN-26-LAP-0001
+     * Generates an Asset ID in the format: ZRX-COUNTRY-CITY-SITE-ASSETTYPE-NNNN
+     * Example: ZRX-IN-CHN-GIC-MAC-0001
+     *
+     * City code is derived from officeCode — no separate CityCode column required.
      */
-    static generate(type: AssetType, country: string, office: string, sequence: number, date?: Date): string;
-    /** Parses an Asset ID back into its components, returns null if malformed. */
+    static generate(country: string, officeCode: string, assetType: string, sequence: number): string;
+    /**
+     * Parses an Asset ID and returns its sequence number.
+     * Supports both formats for backward compatibility:
+     *   New: ZRX-IN-CHN-GIC-MAC-0001 (6 parts, starts with ZRX)
+     *   Old: IN-CHN-26-LAP-0001       (5 parts)
+     */
     static parse(assetId: string): {
-        country: string;
-        office: string;
-        year: string;
-        type: string;
         sequence: number;
     } | null;
-    /** Returns the COUNTRY-OFFICE-YY-TYPE prefix for filtering by sequence. */
-    static getPrefix(type: AssetType, country: string, office: string, date?: Date): string;
     static daysUntilWarrantyExpiry(warrantyExpiry: string): number;
     static formatDate(isoDate: string): string;
 }
