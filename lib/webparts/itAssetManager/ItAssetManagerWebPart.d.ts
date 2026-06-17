@@ -3,6 +3,7 @@ import { IPropertyPaneConfiguration } from '@microsoft/sp-property-pane';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
 import { IReadonlyTheme } from '@microsoft/sp-component-base';
 export interface IItAssetManagerWebPartProps {
+    siteUrl: string;
     assignmentWebhook: string;
     lostDeviceWebhook: string;
     warrantyExpiryWebhook: string;

@@ -7,7 +7,7 @@ import { IAsset, AssetStatus } from '../models/IAsset';
 import { IAssetHistory } from '../models/IAssetHistory';
 export declare class AssetService {
     private _sp;
-    constructor(context: WebPartContext);
+    constructor(context: WebPartContext, siteUrl?: string);
     getAssets(): Promise<IAsset[]>;
     getAssetById(id: number): Promise<IAsset>;
     getNextSequenceNumber(): Promise<number>;

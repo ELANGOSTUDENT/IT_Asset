@@ -11,6 +11,8 @@ export interface IAssetAssignment {
   NextMaintenanceDate?: string;
   Remarks?: string;
   IsActive: boolean;
+  // 6.6 Guest / external user assignment
+  IsGuestUser?: boolean;
 }
 
 export const emptyAssignment = (assetId: string, assetItemId: number): IAssetAssignment => ({

@@ -11,12 +11,16 @@ import {
 import {
   ArrowLeftRegular, AddRegular, SaveRegular, DeleteRegular,
   AttachRegular, TagRegular, WrenchRegular, MoneyRegular,
-  DocumentRegular,
+  DocumentRegular, ShieldCheckmarkRegular, ClockRegular, ArchiveRegular,
 } from '@fluentui/react-icons';
 import {
   IAsset, AssetType, AssetStatus, AssetStatus as AS,
   ASSET_TYPE_LABELS, DEPT_OPTIONS, LOCATION_OPTIONS,
   NEW_ASSET_TYPES, COUNTRY_OPTIONS, OFFICE_OPTIONS,
+  CITY_OPTIONS, OFFICE_OPTIONS_BY_CITY, CITY_CODE_FROM_OFFICE,
+  MAKE_OPTIONS, MODEL_TYPE_OPTIONS,
+  WARRANTY_TYPE_OPTIONS, MAINTENANCE_TYPE_OPTIONS,
+  EOS_REASON_OPTIONS,
 } from '../models/IAsset';
 import { IRepairEntry, IRepairEntryDraft, emptyRepairDraft } from '../models/IRepairEntry';
 import { AssetService } from '../services/AssetService';
@@ -162,13 +166,22 @@ const RepairDialog: React.FC<IRepairDialogProps> = ({ open, draft, saving, onDra
       onDismiss={onClose}
       dialogContentProps={{
         type: DialogType.normal,
-        title: 'Add Repair Entry',
+        title: 'Add Maintenance / Repair Entry',
       }}
       modalProps={{ isBlocking: false }}
       styles={{ main: { minWidth: 560 } }}
     >
       <div className={styles.dialogGrid}>
-        <DateField label="Repair Date *" value={draft.RepairDate} onChange={(v) => set('RepairDate', v)} />
+        <Dropdown
+          label="Type"
+          selectedKey={draft.MaintenanceType || ''}
+          options={[
+            { key: '', text: 'Select type…' },
+            ...MAINTENANCE_TYPE_OPTIONS.map(t => ({ key: t, text: t })),
+          ]}
+          onChange={(_e, opt) => set('MaintenanceType', opt?.key as string || '')}
+        />
+        <DateField label="Date *" value={draft.RepairDate} onChange={(v) => set('RepairDate', v)} />
         <TextField
           label="Vendor / Service Centre *"
           value={draft.RepairVendor}
@@ -191,11 +204,16 @@ const RepairDialog: React.FC<IRepairDialogProps> = ({ open, draft, saving, onDra
           onChange={(_e, v) => set('Resolution', v || '')}
         />
         <TextField
-          label="Repair Cost (INR)"
+          label="Cost (INR)"
           type="number"
           prefix="₹"
           value={String(draft.RepairCost || 0)}
           onChange={(_e, v) => set('RepairCost', parseFloat(v || '0'))}
+        />
+        <DateField
+          label="Next Maintenance Due"
+          value={draft.NextMaintenanceDue}
+          onChange={(v) => set('NextMaintenanceDue', v)}
         />
         <TextField
           label="Remarks"
@@ -219,7 +237,7 @@ const RepairDialog: React.FC<IRepairDialogProps> = ({ open, draft, saving, onDra
       </div>
       <DialogFooter>
         <PrimaryButton onClick={onConfirm} disabled={saving}>
-          {saving ? 'Saving…' : 'Add Repair'}
+          {saving ? 'Saving…' : 'Add Entry'}
         </PrimaryButton>
         <DefaultButton onClick={onClose}>Cancel</DefaultButton>
       </DialogFooter>
@@ -234,13 +252,16 @@ const TYPE_OPTIONS = NEW_ASSET_TYPES
 
 const INITIAL_STATUS_OPTIONS: { value: AssetStatus; label: string }[] = [
   { value: 'Procured', label: 'Procured' },
-  { value: 'Stock',    label: 'Stock' },
+  { value: 'Stock',    label: 'In Stock' },
 ];
 
 const empty = (): Partial<IAsset> => ({
   SerialNumber: '', Model: '', Vendor: '', PONumber: '', InvoiceNumber: '',
   Cost: 0, PurchaseDate: '', WarrantyExpiry: '', Remarks: '',
   Status: 'Procured', Country: 'IN', OfficeCode: 'GIC',
+  Make: '', ModelType: '', ProcurementVendor: '',
+  WarrantyStartDate: '', OEMEndOfServiceDate: '', WarrantyType: '', AddOnService: '',
+  IsTempAssignment: false,
 });
 
 const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
@@ -251,6 +272,10 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
   const isEdit = !!asset;
   const [form, setForm] = useState<Partial<IAsset>>(
     asset ? { ...asset } : { ...empty(), Country: defaultCountry, OfficeCode: defaultOffice }
+  );
+  // City is not stored in IAsset — it is derived from OfficeCode and used only for filtering
+  const [selectedCity, setSelectedCity] = useState<string>(
+    CITY_CODE_FROM_OFFICE[asset ? asset.OfficeCode : defaultOffice] || ''
   );
   const [repairs, setRepairs] = useState<IRepairEntry[]>([]);
   const [loadingRepairs, setLoadingRepairs] = useState(false);
@@ -303,15 +328,27 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
     if (!form.AssetType)               e.AssetType     = 'Asset type is required.';
     if (!form.SerialNumber?.trim())    e.SerialNumber  = 'Serial number is required.';
     if (!form.Model?.trim())           e.Model         = 'Model is required.';
-    if (!form.Vendor?.trim())          e.Vendor        = 'Vendor is required.';
+    if (!form.Vendor?.trim())          e.Vendor        = 'Make is required.';
     if (!form.PurchaseDate)            e.PurchaseDate  = 'Purchase date is required.';
     if (!form.Country?.trim())         e.Country       = 'Country code is required.';
     if (!form.OfficeCode?.trim())      e.OfficeCode    = 'Office code is required.';
     if (form.WarrantyExpiry && form.PurchaseDate &&
         new Date(form.WarrantyExpiry) <= new Date(form.PurchaseDate))
-      e.WarrantyExpiry = 'Warranty expiry must be after purchase date.';
+      e.WarrantyExpiry = 'Warranty end date must be after purchase date.';
+    if (form.WarrantyExpiry && form.WarrantyStartDate &&
+        new Date(form.WarrantyExpiry) <= new Date(form.WarrantyStartDate))
+      e.WarrantyExpiry = 'Warranty end date must be after warranty start date.';
     if (form.Cost !== undefined && form.Cost < 0)
       e.Cost = 'Cost cannot be negative.';
+    if (form.IsTempAssignment) {
+      if (!form.TempAssignedTo?.trim())   e.TempAssignedTo   = 'Temp assignee name is required.';
+      if (!form.TempAssignmentEmail?.trim()) e.TempAssignmentEmail = 'Temp assignee email is required.';
+      if (!form.TempStartDate)            e.TempStartDate    = 'Temp start date is required.';
+      if (!form.TempEndDate)              e.TempEndDate      = 'Temp end date (return by) is required.';
+      if (form.TempStartDate && form.TempEndDate &&
+          new Date(form.TempEndDate) <= new Date(form.TempStartDate))
+        e.TempEndDate = 'Return by date must be after start date.';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -376,6 +413,8 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
         Resolution: repairDraft.Resolution || undefined,
         Remarks: repairDraft.Remarks || undefined,
         AttachmentUrl: attachmentUrl,
+        MaintenanceType: repairDraft.MaintenanceType || undefined,
+        NextMaintenanceDue: repairDraft.NextMaintenanceDue || undefined,
       });
       setRepairs(prev => [entry, ...prev]);
       setRepairDraft(emptyRepairDraft());
@@ -468,12 +507,25 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
               errorMessage={errors.Model}
             />
 
-            <TextField
-              label="Vendor *"
-              value={form.Vendor || ''}
-              onChange={(_e, v) => set('Vendor', v || '')}
-              maxLength={200}
+            <Dropdown
+              label="Make *"
+              selectedKey={form.Vendor || ''}
+              options={[
+                { key: '', text: 'Select make…' },
+                ...MAKE_OPTIONS.map(m => ({ key: m, text: m })),
+              ]}
+              onChange={(_e, opt) => set('Vendor', opt?.key as string || '')}
               errorMessage={errors.Vendor}
+            />
+
+            <Dropdown
+              label="Model Type"
+              selectedKey={form.ModelType || ''}
+              options={[
+                { key: '', text: 'Select model type…' },
+                ...MODEL_TYPE_OPTIONS.map(m => ({ key: m, text: m })),
+              ]}
+              onChange={(_e, opt) => set('ModelType', opt?.key as string || '')}
             />
 
             <Dropdown
@@ -486,19 +538,37 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
               ]}
               onChange={(_e, option) => {
                 const country = option?.key as string;
-                const firstOffice = OFFICE_OPTIONS[country]?.[0]?.key || '';
-                setForm(f => ({ ...f, Country: country, OfficeCode: firstOffice }));
+                setSelectedCity('');
+                setForm(f => ({ ...f, Country: country, OfficeCode: '' }));
               }}
               errorMessage={errors.Country}
             />
 
             <Dropdown
-              label="Site / Office Code *"
-              selectedKey={form.OfficeCode || ''}
+              label="City *"
+              selectedKey={selectedCity}
               disabled={isEdit || !form.Country}
               options={[
-                { key: '', text: form.Country ? 'Select site…' : 'Select country first…' },
-                ...(OFFICE_OPTIONS[form.Country || ''] || []).map(o => ({ key: o.key, text: o.text })),
+                { key: '', text: form.Country ? 'Select city…' : 'Select country first…' },
+                ...(CITY_OPTIONS[form.Country || ''] || []).map(c => ({ key: c.key, text: c.text })),
+              ]}
+              onChange={(_e, option) => {
+                const city = option?.key as string;
+                setSelectedCity(city);
+                const offices = OFFICE_OPTIONS_BY_CITY[city] || [];
+                // Auto-select the office when only one exists for this city
+                const autoOffice = offices.length === 1 ? offices[0].key : '';
+                setForm(f => ({ ...f, OfficeCode: autoOffice }));
+              }}
+            />
+
+            <Dropdown
+              label="Site / Office *"
+              selectedKey={form.OfficeCode || ''}
+              disabled={isEdit || !selectedCity}
+              options={[
+                { key: '', text: selectedCity ? 'Select site…' : 'Select city first…' },
+                ...(OFFICE_OPTIONS_BY_CITY[selectedCity] || []).map(o => ({ key: o.key, text: o.text })),
               ]}
               onChange={(_e, option) => set('OfficeCode', option?.key as string)}
               errorMessage={errors.OfficeCode}
@@ -510,7 +580,6 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
         <Section title="Procurement" icon={<MoneyRegular />}>
           <div className={styles.grid}>
             <DateField label="Purchase Date *" value={form.PurchaseDate || ''} onChange={v => set('PurchaseDate', v)} required error={errors.PurchaseDate} />
-            <DateField label="Warranty Expiry" value={form.WarrantyExpiry || ''} onChange={v => set('WarrantyExpiry', v)} error={errors.WarrantyExpiry} />
 
             <TextField
               label="PO Number"
@@ -524,6 +593,14 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
               value={form.InvoiceNumber || ''}
               onChange={(_e, v) => set('InvoiceNumber', v || '')}
               maxLength={100}
+            />
+
+            <TextField
+              label="Vendor / Supplier"
+              value={form.ProcurementVendor || ''}
+              onChange={(_e, v) => set('ProcurementVendor', v || '')}
+              maxLength={200}
+              placeholder="e.g. Croma, Amazon Business, Ingram Micro…"
             />
 
             <TextField
@@ -543,6 +620,140 @@ const AssetDetailsForm: React.FC<IAssetDetailsFormProps> = ({
             />
           </div>
         </Section>
+
+        {/* ── Warranty & Services ── */}
+        <Section title="Warranty & Services" icon={<ShieldCheckmarkRegular />}>
+          <div className={styles.grid}>
+            <DateField label="Warranty Start Date" value={form.WarrantyStartDate || ''} onChange={v => set('WarrantyStartDate', v)} />
+            <DateField label="Warranty End Date" value={form.WarrantyExpiry || ''} onChange={v => set('WarrantyExpiry', v)} error={errors.WarrantyExpiry} />
+            <DateField label="OEM End of Service Date" value={form.OEMEndOfServiceDate || ''} onChange={v => set('OEMEndOfServiceDate', v)} />
+            <Dropdown
+              label="Type of Warranty"
+              selectedKey={form.WarrantyType || ''}
+              options={[
+                { key: '', text: 'Select type…' },
+                ...WARRANTY_TYPE_OPTIONS.map(w => ({ key: w, text: w })),
+              ]}
+              onChange={(_e, opt) => set('WarrantyType', opt?.key as string || '')}
+            />
+            <TextField
+              label="Add-on Service"
+              value={form.AddOnService || ''}
+              onChange={(_e, v) => set('AddOnService', v || '')}
+              maxLength={200}
+              placeholder="e.g. AppleCare+, HP Care Pack…"
+            />
+          </div>
+        </Section>
+
+        {/* ── Temporary Assignment ── */}
+        {isEdit && (
+          <Section title="Temporary Assignment" icon={<ClockRegular />}>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+                <input
+                  type="checkbox"
+                  checked={!!form.IsTempAssignment}
+                  onChange={e => {
+                    set('IsTempAssignment', e.target.checked);
+                    if (!e.target.checked) {
+                      setForm(f => ({
+                        ...f,
+                        TempAssignedTo: '', TempAssignmentEmail: '',
+                        TempAssignmentPurpose: '', TempStartDate: '', TempEndDate: '',
+                      }));
+                    }
+                  }}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                This is a temporary assignment
+              </label>
+              <span style={{ fontSize: 12, color: '#707070', display: 'block', marginTop: 4, marginLeft: 24 }}>
+                When enabled, the asset will be tracked as temporarily assigned.
+              </span>
+            </div>
+
+            {form.IsTempAssignment && (
+              <div className={styles.grid}>
+                <TextField
+                  label="Temp Assigned To *"
+                  value={form.TempAssignedTo || ''}
+                  onChange={(_e, v) => set('TempAssignedTo', v || '')}
+                  placeholder="Full name"
+                  errorMessage={(errors as Record<string, string>).TempAssignedTo}
+                />
+                <TextField
+                  label="Temp Assignee Email *"
+                  type="email"
+                  value={form.TempAssignmentEmail || ''}
+                  onChange={(_e, v) => set('TempAssignmentEmail', v || '')}
+                  placeholder="user@example.com"
+                  errorMessage={(errors as Record<string, string>).TempAssignmentEmail}
+                />
+                <TextField
+                  label="Purpose"
+                  value={form.TempAssignmentPurpose || ''}
+                  onChange={(_e, v) => set('TempAssignmentPurpose', v || '')}
+                  placeholder="e.g. Trade show, client visit…"
+                  maxLength={500}
+                />
+                <DateField
+                  label="Temp Start Date *"
+                  value={form.TempStartDate || ''}
+                  onChange={v => set('TempStartDate', v)}
+                  error={(errors as Record<string, string>).TempStartDate}
+                />
+                <DateField
+                  label="Return By (End Date) *"
+                  value={form.TempEndDate || ''}
+                  onChange={v => set('TempEndDate', v)}
+                  error={(errors as Record<string, string>).TempEndDate}
+                />
+                {form.TempReminderSent && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#dff6dd', borderRadius: 4, fontSize: 13, color: '#107c10' }}>
+                    ✓ Return reminder has been sent
+                  </div>
+                )}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* ── End of Service ── */}
+        {isEdit && (
+          <Section title="End of Service" icon={<ArchiveRegular />}>
+            <div className={styles.grid}>
+              <DateField
+                label="End of Service Date"
+                value={form.EndOfServiceDate || ''}
+                onChange={v => set('EndOfServiceDate', v)}
+              />
+              <Dropdown
+                label="End of Service Reason"
+                selectedKey={form.EndOfServiceReason || ''}
+                options={[
+                  { key: '', text: 'Select reason…' },
+                  ...EOS_REASON_OPTIONS.map(r => ({ key: r, text: r })),
+                ]}
+                onChange={(_e, opt) => set('EndOfServiceReason', opt?.key as string || '')}
+              />
+              <TextField
+                label="EOS Remarks"
+                className={styles.fullWidth}
+                multiline
+                rows={2}
+                value={form.EosRemarks || ''}
+                onChange={(_e, v) => set('EosRemarks', v || '')}
+                maxLength={1000}
+              />
+            </div>
+            {(form.EndOfServiceDate || form.EndOfServiceReason) && (
+              <div style={{ marginTop: 12, padding: '8px 12px', background: '#fff4ce', borderRadius: 4, fontSize: 13, color: '#7d4900' }}>
+                Tip: Consider changing asset status to <strong>End of Service</strong> from the detail view.
+              </div>
+            )}
+          </Section>
+        )}
 
         {/* ── Repair History ── */}
         {isEdit && (

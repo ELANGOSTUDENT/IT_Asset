@@ -18,8 +18,17 @@ const ASSET_SELECT = [
   'Cost', 'PurchaseDate', 'WarrantyExpiry', 'AssignedTo', 'AssignedToEmail',
   'Department', 'AssetLocation', 'Country', 'OfficeCode', 'Status', 'AssetType',
   'Remarks', 'SequenceNumber', 'Created', 'Modified',
-  // Procurement attachment
-  'PurchaseBillUrl',
+  // Procurement
+  'PurchaseBillUrl', 'ProcurementVendor',
+  // 6.4 Hardware
+  'Make', 'ModelType',
+  // 6.7 Temporary assignment
+  'IsTempAssignment', 'TempAssignedTo', 'TempAssignmentEmail',
+  'TempAssignmentPurpose', 'TempStartDate', 'TempEndDate', 'TempReminderSent',
+  // 6.8 Warranty & services
+  'WarrantyStartDate', 'OEMEndOfServiceDate', 'WarrantyType', 'AddOnService',
+  // 6.10 End of service
+  'EndOfServiceDate', 'EndOfServiceReason', 'EosRemarks',
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,8 +41,10 @@ const mapAsset = (item: any): IAsset => ({
 export class AssetService {
   private _sp: SPFI;
 
-  constructor(context: WebPartContext) {
-    this._sp = spfi().using(SPFx(context));
+  constructor(context: WebPartContext, siteUrl?: string) {
+    this._sp = siteUrl
+      ? spfi(siteUrl).using(SPFx(context))
+      : spfi().using(SPFx(context));
   }
 
   // ----------------------------------------------------------------

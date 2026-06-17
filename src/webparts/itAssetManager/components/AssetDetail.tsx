@@ -13,11 +13,12 @@ import {
   TagRegular, LaptopRegular, MoneyRegular, PersonRegular,
   NoteRegular, WrenchRegular, DocumentRegular, LeafThreeRegular,
   AddRegular, AttachRegular, CalendarRegular,
-  HistoryRegular,
+  HistoryRegular, ShieldCheckmarkRegular, ClockRegular, ArchiveRegular,
 } from '@fluentui/react-icons';
 import {
   IAsset, AssetStatus, ASSET_STATUS_TRANSITIONS, STATUS_BADGE_COLORS,
   STATUS_REQUIRES_NOTE, ASSET_TYPE_LABELS,
+  CITY_CODE_FROM_OFFICE, CITY_LABEL, DISPOSAL_METHOD_OPTIONS,
 } from '../models/IAsset';
 import { IAssetHistory } from '../models/IAssetHistory';
 import { IAssetAssignment } from '../models/IAssetAssignment';
@@ -53,6 +54,14 @@ interface IAssetDetailProps {
 
 // ── Small helpers ──────────────────────────────────────────────────────────────
 
+function normalizeStatusLabel(status: string): string {
+  if (status === 'Stock')        return 'In Stock';
+  if (status === 'Repair')       return 'In Repair';
+  if (status === 'TempAssigned') return 'Temp Assigned';
+  if (status === 'EndOfService') return 'End of Service';
+  return status;
+}
+
 const StatusBadge: React.FC<{ status: AssetStatus }> = ({ status }) => {
   const c = STATUS_BADGE_COLORS[status] || { bg: '#ebebeb', text: '#333' };
   return (
@@ -60,7 +69,7 @@ const StatusBadge: React.FC<{ status: AssetStatus }> = ({ status }) => {
       background: c.bg, color: c.text,
       padding: '3px 12px', borderRadius: 12, fontWeight: 600, fontSize: 13,
     }}>
-      {status}
+      {normalizeStatusLabel(status)}
     </span>
   );
 };
@@ -206,7 +215,7 @@ const ScrapDialog: React.FC<IScrapDialogProps> = ({
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
         <div>
-          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Scrap Date</label>
+          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Disposal Date</label>
           <input
             type="date"
             value={draft.ScrapDate ? draft.ScrapDate.slice(0, 10) : ''}
@@ -214,13 +223,22 @@ const ScrapDialog: React.FC<IScrapDialogProps> = ({
             style={{ width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, border: '1px solid #d1d1d1', boxSizing: 'border-box' }}
           />
         </div>
+        <Dropdown
+          label="Disposal Method"
+          selectedKey={draft.DisposalMethod || ''}
+          options={[
+            { key: '', text: 'Select method…' },
+            ...DISPOSAL_METHOD_OPTIONS.map(m => ({ key: m, text: m })),
+          ]}
+          onChange={(_e, opt) => set('DisposalMethod', opt?.key as string || '')}
+        />
         <TextField
-          label="Scrap Vendor"
+          label="Disposal Vendor"
           value={draft.ScrapVendor || ''}
           onChange={(_e, v) => set('ScrapVendor', v || '')}
         />
         <TextField
-          label="Scrap Amount (INR)"
+          label="Proceeds / Salvage Value (INR)"
           type="number"
           prefix="₹"
           value={String(draft.ScrapAmount ?? 0)}
@@ -234,7 +252,7 @@ const ScrapDialog: React.FC<IScrapDialogProps> = ({
           onChange={(_e, v) => set('ScrapRemarks', v || '')}
         />
         <div>
-          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Certificate / Document</label>
+          <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>E-waste Certificate / Document</label>
           {draft.ScrapAttachmentUrl && (
             <a href={draft.ScrapAttachmentUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginBottom: 8, fontSize: 13 }}>
               View existing
@@ -574,11 +592,12 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
           {/* Classification */}
           <Card title="Classification" icon={<TagRegular />}>
             <div className={styles.fieldGrid}>
-              <F label="Asset ID"   value={asset.Title} mono />
-              <F label="Asset Type" value={`${asset.AssetType} – ${ASSET_TYPE_LABELS[asset.AssetType] || ''}`} />
-              <F label="Status"     value={asset.Status} />
-              <F label="Country"    value={asset.Country} />
-              <F label="Office"     value={asset.OfficeCode} />
+              <F label="Asset ID"    value={asset.Title} mono />
+              <F label="Asset Type"  value={`${asset.AssetType} – ${ASSET_TYPE_LABELS[asset.AssetType] || ''}`} />
+              <F label="Status"      value={normalizeStatusLabel(asset.Status)} />
+              <F label="Country"     value={asset.Country} />
+              <F label="City"        value={CITY_LABEL[CITY_CODE_FROM_OFFICE[asset.OfficeCode] || ''] || '—'} />
+              <F label="Site / Office" value={asset.OfficeCode} />
             </div>
           </Card>
 
@@ -586,23 +605,20 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
           <Card title="Hardware" icon={<LaptopRegular />}>
             <div className={styles.fieldGrid}>
               <F label="Serial Number" value={asset.SerialNumber} mono />
+              <F label="Make"          value={asset.Make || asset.Vendor} />
+              <F label="Model Type"    value={asset.ModelType} />
               <F label="Model"         value={asset.Model} />
-              <F label="Vendor"        value={asset.Vendor} />
             </div>
           </Card>
 
           {/* Procurement */}
           <Card title="Procurement" icon={<MoneyRegular />}>
             <div className={styles.fieldGrid}>
-              <F label="PO Number"     value={asset.PONumber} />
-              <F label="Invoice No."   value={asset.InvoiceNumber} />
-              <F label="Cost"          value={asset.Cost ? `₹${Number(asset.Cost).toLocaleString('en-IN')}` : undefined} />
-              <F label="Purchase Date" value={AssetIdGenerator.formatDate(asset.PurchaseDate)} />
-              <F label="Warranty Exp." value={
-                asset.WarrantyExpiry
-                  ? `${AssetIdGenerator.formatDate(asset.WarrantyExpiry)} (${daysLeft >= 0 ? `${daysLeft}d left` : 'EXPIRED'})`
-                  : undefined
-              } />
+              <F label="PO Number"       value={asset.PONumber} />
+              <F label="Invoice No."     value={asset.InvoiceNumber} />
+              <F label="Vendor / Supplier" value={asset.ProcurementVendor} />
+              <F label="Cost"            value={asset.Cost ? `₹${Number(asset.Cost).toLocaleString('en-IN')}` : undefined} />
+              <F label="Purchase Date"   value={AssetIdGenerator.formatDate(asset.PurchaseDate)} />
             </div>
             {asset.PurchaseBillUrl && (
               <a href={asset.PurchaseBillUrl} target="_blank" rel="noopener noreferrer" className={styles.attachLink}>
@@ -611,22 +627,52 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
             )}
           </Card>
 
-          {/* Repair history */}
-          <Card title="Repair History" icon={<WrenchRegular />}>
+          {/* Warranty & Services */}
+          <Card title="Warranty & Services" icon={<ShieldCheckmarkRegular />}>
+            <div className={styles.fieldGrid}>
+              <F label="Warranty Start" value={AssetIdGenerator.formatDate(asset.WarrantyStartDate || '')} />
+              <F label="Warranty End"   value={
+                asset.WarrantyExpiry
+                  ? `${AssetIdGenerator.formatDate(asset.WarrantyExpiry)} (${daysLeft >= 0 ? `${daysLeft}d left` : 'EXPIRED'})`
+                  : undefined
+              } />
+              <F label="OEM End of Service" value={AssetIdGenerator.formatDate(asset.OEMEndOfServiceDate || '')} />
+              <F label="Warranty Type"  value={asset.WarrantyType} />
+              <F label="Add-on Service" value={asset.AddOnService} />
+              <F label="Asset Age"      value={
+                asset.PurchaseDate
+                  ? `${Math.floor((Date.now() - new Date(asset.PurchaseDate).getTime()) / (1000 * 60 * 60 * 24 * 365.25))} year(s)`
+                  : undefined
+              } />
+            </div>
+          </Card>
+
+          {/* Maintenance & Repair History */}
+          <Card title="Maintenance & Repair" icon={<WrenchRegular />}>
             {loadingRepairs
               ? <Spinner size={SpinnerSize.small} label="Loading…" />
               : repairs.length === 0
-                ? <span style={{ fontSize: 12, color: '#707070' }}>No repair records.</span>
+                ? <span style={{ fontSize: 12, color: '#707070' }}>No maintenance / repair records.</span>
                 : repairs.map(r => (
                     <div key={r.Id} className={styles.repairEntry}>
                       <div className={styles.repairHeader}>
                         <span style={{ fontWeight: 600 }}>{AssetIdGenerator.formatDate(r.RepairDate)}</span>
+                        {r.MaintenanceType && (
+                          <span style={{ fontSize: 11, background: '#deecf9', color: '#004578', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>
+                            {r.MaintenanceType}
+                          </span>
+                        )}
                         <span style={{ fontSize: 12, color: '#707070' }}>{r.RepairVendor}</span>
                       </div>
                       <span style={{ fontSize: 12 }}>{r.IssueDescription}</span>
                       {r.Resolution && (
                         <span style={{ fontSize: 12, color: '#107c10', display: 'block' }}>
                           Resolution: {r.Resolution}
+                        </span>
+                      )}
+                      {r.NextMaintenanceDue && (
+                        <span style={{ fontSize: 12, color: '#004578', display: 'block' }}>
+                          Next due: {AssetIdGenerator.formatDate(r.NextMaintenanceDue)}
                         </span>
                       )}
                       {r.RepairCost > 0 && (
@@ -689,14 +735,15 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
               ) : scrap ? (
                 <>
                   <div className={styles.fieldGrid}>
-                    <F label="Scrap Date"   value={AssetIdGenerator.formatDate(scrap.ScrapDate || '')} />
-                    <F label="Scrap Vendor" value={scrap.ScrapVendor} />
-                    <F label="Scrap Amount" value={scrap.ScrapAmount ? `₹${Number(scrap.ScrapAmount).toLocaleString('en-IN')}` : undefined} />
-                    <F label="Remarks"      value={scrap.ScrapRemarks} />
+                    <F label="Disposal Date"   value={AssetIdGenerator.formatDate(scrap.ScrapDate || '')} />
+                    <F label="Disposal Method" value={scrap.DisposalMethod} />
+                    <F label="Disposal Vendor" value={scrap.ScrapVendor} />
+                    <F label="Proceeds / Salvage" value={scrap.ScrapAmount ? `₹${Number(scrap.ScrapAmount).toLocaleString('en-IN')}` : undefined} />
+                    <F label="Remarks"         value={scrap.ScrapRemarks} />
                   </div>
                   {scrap.ScrapAttachmentUrl && (
                     <a href={scrap.ScrapAttachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.attachLink}>
-                      <AttachRegular /> Certificate / Document
+                      <AttachRegular /> E-waste Certificate / Document
                     </a>
                   )}
                   <DefaultButton
@@ -704,7 +751,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                     onClick={() => { setScrapDraft({ ...scrap }); setShowScrapDlg(true); }}
                     style={{ marginTop: 8 }}
                   >
-                    Edit Scrap Details
+                    Edit Disposal Details
                   </DefaultButton>
                 </>
               ) : (
@@ -715,6 +762,31 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                   Add Scrap Details
                 </DefaultButton>
               )}
+            </Card>
+          )}
+
+          {/* Temporary Assignment */}
+          {asset.IsTempAssignment && (
+            <Card title="Temporary Assignment" icon={<ClockRegular />}>
+              <div className={styles.fieldGrid}>
+                <F label="Temp Assigned To"  value={asset.TempAssignedTo} />
+                <F label="Email"             value={asset.TempAssignmentEmail} />
+                <F label="Purpose"           value={asset.TempAssignmentPurpose} />
+                <F label="Start Date"        value={AssetIdGenerator.formatDate(asset.TempStartDate || '')} />
+                <F label="Return By"         value={AssetIdGenerator.formatDate(asset.TempEndDate || '')} />
+                <F label="Reminder Sent"     value={asset.TempReminderSent ? 'Yes' : 'No'} />
+              </div>
+            </Card>
+          )}
+
+          {/* End of Service */}
+          {(asset.EndOfServiceDate || asset.EndOfServiceReason) && (
+            <Card title="End of Service" icon={<ArchiveRegular />}>
+              <div className={styles.fieldGrid}>
+                <F label="EOS Date"   value={AssetIdGenerator.formatDate(asset.EndOfServiceDate || '')} />
+                <F label="EOS Reason" value={asset.EndOfServiceReason} />
+                <F label="Remarks"    value={asset.EosRemarks} />
+              </div>
             </Card>
           )}
 
@@ -743,6 +815,11 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                   <F label="Location"     value={assignment.AssetLocation} />
                   <F label="Assigned On"  value={AssetIdGenerator.formatDate(assignment.DateOfAssignment)} />
                 </div>
+                {assignment.IsGuestUser && (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff4ce', color: '#7d4900', padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, marginTop: 6 }}>
+                    External / Guest User
+                  </div>
+                )}
                 <DefaultButton
                   iconProps={{ iconName: 'Edit' }}
                   onClick={() => onEditAssignment(assignment)}
@@ -840,7 +917,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 8, maxHeight: '72vh', overflowY: 'auto', paddingRight: 4 }}>
           <span style={{ fontSize: 12, color: '#707070' }}>
-            Current status: <strong>{asset.Status}</strong>
+            Current status: <strong>{normalizeStatusLabel(asset.Status)}</strong>
           </span>
 
           <Dropdown
@@ -848,7 +925,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
             selectedKey={newStatus || ''}
             options={[
               { key: '', text: 'Select next status…' },
-              ...validTransitions.map(s => ({ key: s, text: s })),
+              ...validTransitions.map(s => ({ key: s, text: normalizeStatusLabel(s) })),
             ]}
             onChange={(_e, option) => {
               const val = option?.key as string;
@@ -867,11 +944,11 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
           {(newStatus === 'Scrapped' || (newStatus === 'Disposed' && !scrap)) && (
             <div style={{ borderTop: '1px solid #e1dfdd', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <span style={{ fontWeight: 700, fontSize: 11, color: '#605e5c', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
-                Scrap / Disposal Details
+                Disposal Details
               </span>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'start' }}>
                 <div>
-                  <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Scrap Date</label>
+                  <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Disposal Date</label>
                   <input
                     type="date"
                     value={scrapDraftSt.ScrapDate ? scrapDraftSt.ScrapDate.slice(0, 10) : ''}
@@ -879,26 +956,35 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
                     style={{ width: '100%', padding: '5px 8px', borderRadius: 4, fontSize: 14, border: '1px solid #d1d1d1', boxSizing: 'border-box' }}
                   />
                 </div>
+                <Dropdown
+                  label="Disposal Method"
+                  selectedKey={scrapDraftSt.DisposalMethod || ''}
+                  options={[
+                    { key: '', text: 'Select method…' },
+                    ...DISPOSAL_METHOD_OPTIONS.map(m => ({ key: m, text: m })),
+                  ]}
+                  onChange={(_e, opt) => setScrapDraftSt(d => ({ ...d, DisposalMethod: opt?.key as string || '' }))}
+                />
                 <TextField
-                  label="Scrap Vendor"
+                  label="Disposal Vendor"
                   value={scrapDraftSt.ScrapVendor || ''}
                   onChange={(_e, v) => setScrapDraftSt(d => ({ ...d, ScrapVendor: v || '' }))}
                 />
                 <TextField
-                  label="Scrap Amount (INR)"
+                  label="Proceeds / Salvage Value (INR)"
                   type="number"
                   prefix="₹"
                   value={scrapDraftSt.ScrapAmount != null ? String(scrapDraftSt.ScrapAmount) : ''}
                   onChange={(_e, v) => setScrapDraftSt(d => ({ ...d, ScrapAmount: v ? parseFloat(v) : undefined }))}
                 />
                 <TextField
-                  label="Scrap Remarks"
+                  label="Remarks"
                   value={scrapDraftSt.ScrapRemarks || ''}
                   onChange={(_e, v) => setScrapDraftSt(d => ({ ...d, ScrapRemarks: v || '' }))}
                 />
               </div>
               <div>
-                <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>Certificate / Document</label>
+                <label style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}>E-waste Certificate / Document</label>
                 <input ref={scrapFileInputRef} type="file" onChange={e => setScrapFileSt(e.target.files?.[0] ?? null)} />
                 {scrapFileSt && (
                   <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: '#107c10' }}>
@@ -1024,7 +1110,7 @@ const AssetDetail: React.FC<IAssetDetailProps> = ({
 
           {newStatus && (
             <MessageBar messageBarType={MessageBarType.info}>
-              Status will change: <strong>{asset.Status}</strong> → <strong>{newStatus}</strong>
+              Status will change: <strong>{normalizeStatusLabel(asset.Status)}</strong> → <strong>{normalizeStatusLabel(newStatus)}</strong>
             </MessageBar>
           )}
         </div>

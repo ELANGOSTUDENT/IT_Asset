@@ -89,7 +89,11 @@ const AssetAssignmentForm: React.FC<IAssetAssignmentFormProps> = ({
   const validate = (): boolean => {
     const e: AssignmentErrors = {};
     if (!form.AssignedTo?.trim())      e.AssignedTo      = 'Assigned To is required.';
+    else if (form.IsGuestUser && form.AssignedTo.trim().split(/\s+/).length < 2)
+      e.AssignedTo = 'Guest user name must include at least first and last name.';
     if (!form.AssignedToEmail?.trim()) e.AssignedToEmail = 'Email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.AssignedToEmail.trim()))
+      e.AssignedToEmail = 'Enter a valid email address.';
     if (!form.Department?.trim())      e.Department      = 'Department is required.';
     if (!form.DateOfAssignment)        e.DateOfAssignment = 'Date of assignment is required.';
     if (form.NextMaintenanceDate && form.LastMaintenanceDate &&
@@ -167,12 +171,28 @@ const AssetAssignmentForm: React.FC<IAssetAssignmentFormProps> = ({
 
         {/* ── Assignment ── */}
         <Section title="Assignment Details" icon={<PersonRegular />}>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={!!form.IsGuestUser}
+                onChange={e => set('IsGuestUser', e.target.checked)}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              Is External / Guest User
+            </label>
+            {form.IsGuestUser && (
+              <span style={{ fontSize: 12, color: '#7d4900', display: 'block', marginTop: 4, marginLeft: 24 }}>
+                Guest user — full name (2+ words) and valid email required.
+              </span>
+            )}
+          </div>
           <div className={styles.grid}>
             <TextField
               label="Assigned To *"
               value={form.AssignedTo}
               onChange={(_e, v) => set('AssignedTo', v || '')}
-              placeholder="Full name"
+              placeholder={form.IsGuestUser ? 'First Last (full name required)' : 'Full name'}
               errorMessage={errors.AssignedTo}
             />
 
@@ -181,7 +201,7 @@ const AssetAssignmentForm: React.FC<IAssetAssignmentFormProps> = ({
               type="email"
               value={form.AssignedToEmail}
               onChange={(_e, v) => set('AssignedToEmail', v || '')}
-              placeholder="user@zoomrx.com"
+              placeholder={form.IsGuestUser ? 'guest@external.com' : 'user@zoomrx.com'}
               errorMessage={errors.AssignedToEmail}
             />
 

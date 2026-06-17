@@ -7,4 +7,6 @@ export interface IScrapAsset {
   ScrapAmount?: number;
   ScrapAttachmentUrl?: string;
   ScrapRemarks?: string;
+  // 6.11 Disposal method
+  DisposalMethod?: string; // E-waste / Written Off / Sold / Donated / Transferred
 }

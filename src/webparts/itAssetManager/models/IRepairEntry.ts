@@ -9,6 +9,9 @@ export interface IRepairEntry {
   Resolution?: string;
   Remarks?: string;
   AttachmentUrl?: string;    // Server-relative URL in IT Assets / Repair Reports library
+  // 6.9 Maintenance & Repair
+  MaintenanceType?: string;  // Preventive / Corrective / Repair / Inspection
+  NextMaintenanceDue?: string; // ISO date
 }
 
 export interface IRepairEntryDraft {
@@ -19,6 +22,9 @@ export interface IRepairEntryDraft {
   Resolution: string;
   Remarks: string;
   AttachmentFile?: File;
+  // 6.9 additions
+  MaintenanceType: string;
+  NextMaintenanceDue: string;
 }
 
 export const emptyRepairDraft = (): IRepairEntryDraft => ({
@@ -28,4 +34,6 @@ export const emptyRepairDraft = (): IRepairEntryDraft => ({
   RepairCost: 0,
   Resolution: '',
   Remarks: '',
+  MaintenanceType: '',
+  NextMaintenanceDue: '',
 });

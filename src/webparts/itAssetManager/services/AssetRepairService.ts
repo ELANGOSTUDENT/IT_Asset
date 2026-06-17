@@ -10,6 +10,8 @@ const LIST = 'Asset_Repairs';
 const SELECT = [
   'Id', 'Title', 'AssetItemId', 'RepairDate', 'RepairVendor',
   'IssueDescription', 'RepairCost', 'Resolution', 'Remarks', 'AttachmentUrl',
+  // 6.9 Maintenance
+  'MaintenanceType', 'NextMaintenanceDue',
 ];
 
 export class AssetRepairService {

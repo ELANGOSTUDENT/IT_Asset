@@ -43,12 +43,19 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
 
   // "Assign now?" prompt state (shown after creating a new asset)
   const [assignPromptAsset, setAssignPromptAsset] = useState<IAsset | null>(null);
+  // Currently editing assignment (for edit-assign view)
+  const [editingAssignment, setEditingAssignment] = useState<IAssetAssignment | null>(null);
 
-  // Build services once
-  const sp: SPFI = useMemo(() => spfi().using(SPFx(props.context)), [props.context]);
-  const siteRelUrl: string = props.context.pageContext.web.serverRelativeUrl;
+  // Build services once — all pointed at the configured site (may differ from the page's host site)
+  const sp: SPFI = useMemo(
+    () => spfi(props.siteUrl).using(SPFx(props.context)),
+    [props.context, props.siteUrl]
+  );
+  const siteRelUrl: string = useMemo(() => {
+    try { return new URL(props.siteUrl).pathname; } catch { return props.context.pageContext.web.serverRelativeUrl; }
+  }, [props.siteUrl, props.context.pageContext.web.serverRelativeUrl]);
 
-  const svc        = useMemo(() => new AssetService(props.context), [props.context]);
+  const svc        = useMemo(() => new AssetService(props.context, props.siteUrl), [props.context, props.siteUrl]);
   const repairSvc  = useMemo(() => new AssetRepairService(sp), [sp]);
   const assignSvc  = useMemo(() => new AssetAssignmentService(sp), [sp]);
   const giftedSvc  = useMemo(() => new AssetGiftedService(sp), [sp]);
@@ -160,7 +167,14 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
 
   const openEditAssignment = (existing: IAssetAssignment | null) => {
     if (!selected) return;
+    setEditingAssignment(existing);
     setView(existing ? 'edit-assign' : 'assign');
+  };
+
+  const handleBulkLinkDocument = async (assetItemIds: number[], docUrl: string): Promise<void> => {
+    await Promise.all(assetItemIds.map(id => svc.updateAsset(id, { PurchaseBillUrl: docUrl })));
+    await loadAssets();
+    notify(`Document linked to ${assetItemIds.length} asset(s).`);
   };
 
   // ── Initial loading spinner ───────────────────────────────────────────────────
@@ -227,6 +241,7 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
           onView={openDetail}
           onEdit={openEdit}
           onRefresh={loadAssets}
+          onBulkLinkDocument={handleBulkLinkDocument}
         />
       )}
 
@@ -267,6 +282,7 @@ const ItAssetManager: React.FC<IItAssetManagerProps> = (props) => {
       {view === 'edit-assign' && selected && (
         <AssetAssignmentForm
           asset={selected}
+          existingAssignment={editingAssignment ?? undefined}
           assignmentService={assignSvc}
           onSave={handleSaveAssignment}
           onCancel={() => setView('detail')}

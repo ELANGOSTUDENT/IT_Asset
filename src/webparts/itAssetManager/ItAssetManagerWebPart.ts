@@ -12,6 +12,7 @@ import ItAssetManager from './components/ItAssetManager';
 import { IItAssetManagerProps } from './components/IItAssetManagerProps';
 
 export interface IItAssetManagerWebPartProps {
+  siteUrl: string;
   assignmentWebhook: string;
   lostDeviceWebhook: string;
   warrantyExpiryWebhook: string;
@@ -30,6 +31,7 @@ export default class ItAssetManagerWebPart extends BaseClientSideWebPart<IItAsse
   public render(): void {
     const element: React.ReactElement<IItAssetManagerProps> = React.createElement(ItAssetManager, {
       context: this.context,
+      siteUrl:               this.properties.siteUrl              || 'https://zoomrxinc.sharepoint.com/sites/IT-Tech',
       assignmentWebhook:     this.properties.assignmentWebhook     || '',
       lostDeviceWebhook:     this.properties.lostDeviceWebhook     || '',
       warrantyExpiryWebhook: this.properties.warrantyExpiryWebhook || '',
@@ -68,6 +70,17 @@ export default class ItAssetManagerWebPart extends BaseClientSideWebPart<IItAsse
         {
           header: { description: 'IT Asset Manager Settings' },
           groups: [
+            {
+              groupName: 'Lists Configuration',
+              groupFields: [
+                PropertyPaneTextField('siteUrl', {
+                  label: 'SharePoint Site URL (override)',
+                  description: 'Leave blank to use the default (IT-Tech). Only set this if you move the lists to a different site.',
+                  multiline: true,
+                  rows: 2,
+                }),
+              ],
+            },
             {
               groupName: 'Office Configuration',
               groupFields: [

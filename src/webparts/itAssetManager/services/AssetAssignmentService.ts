@@ -13,6 +13,8 @@ const SELECT = [
   'AssignedTo', 'AssignedToEmail', 'Department', 'AssetLocation',
   'DateOfAssignment', 'LastMaintenanceDate', 'NextMaintenanceDate',
   'Remarks', 'IsActive',
+  // 6.6 Guest user
+  'IsGuestUser',
 ];
 
 export class AssetAssignmentService {

@@ -7,6 +7,7 @@ interface IAssetTableProps {
     onView: (asset: IAsset) => void;
     onEdit: (asset: IAsset) => void;
     onRefresh: () => void;
+    onBulkLinkDocument?: (assetItemIds: number[], docUrl: string) => Promise<void>;
 }
 declare const AssetTable: React.FC<IAssetTableProps>;
 export default AssetTable;

@@ -1,28 +1,45 @@
 import * as React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   DetailsList, DetailsListLayoutMode, SelectionMode, IColumn,
   SearchBox, Dropdown, IDropdownOption,
-  Stack, PrimaryButton, DefaultButton, IconButton, CommandBar, ICommandBarItemProps,
+  Stack, DefaultButton, IconButton, CommandBar, ICommandBarItemProps,
   Spinner, SpinnerSize, Text, Icon,
+  Selection, Dialog, DialogType, DialogFooter, TextField,
+  MessageBar, MessageBarType,
 } from '@fluentui/react';
-import { IAsset, AssetStatus, AssetType, ASSET_TYPE_LABELS, STATUS_BADGE_COLORS, ALL_ASSET_TYPES, OFFICE_OPTIONS } from '../models/IAsset';
+import {
+  IAsset, AssetStatus, AssetType,
+  ASSET_TYPE_LABELS, STATUS_BADGE_COLORS, ALL_ASSET_TYPES, OFFICE_OPTIONS,
+} from '../models/IAsset';
 import { AssetIdGenerator } from '../utils/AssetIdGenerator';
 import styles from './AssetTable.module.scss';
 
-interface IAssetTableProps {
-  assets: IAsset[];
-  loading: boolean;
-  onAddNew: () => void;
-  onView:   (asset: IAsset) => void;
-  onEdit:   (asset: IAsset) => void;
-  onRefresh: () => void;
+// ── Display helpers ────────────────────────────────────────────────────────────
+
+function normalizeStatusLabel(status: string): string {
+  if (status === 'Stock')        return 'In Stock';
+  if (status === 'Repair')       return 'In Repair';
+  if (status === 'TempAssigned') return 'Temp Assigned';
+  if (status === 'EndOfService') return 'End of Service';
+  return status;
 }
 
+// ── Filter constants ──────────────────────────────────────────────────────────
+
 const STATUS_OPTIONS: IDropdownOption[] = [
-  { key: '', text: 'All Statuses' },
-  ...(['Procured','Stock','Active','Repair','Transferred','Gifted','Lost','Stolen','Scrapped','Disposed'] as AssetStatus[])
-    .map(s => ({ key: s, text: s })),
+  { key: '',             text: 'All Statuses'  },
+  { key: 'Procured',     text: 'Procured'      },
+  { key: 'Stock',        text: 'In Stock'      },
+  { key: 'Active',       text: 'Active'        },
+  { key: 'Repair',       text: 'In Repair'     },
+  { key: 'TempAssigned', text: 'Temp Assigned' },
+  { key: 'Gifted',       text: 'Gifted'        },
+  { key: 'Lost',         text: 'Lost'          },
+  { key: 'Stolen',       text: 'Stolen'        },
+  { key: 'EndOfService', text: 'End of Service'},
+  { key: 'Scrapped',     text: 'Scrapped'      },
+  { key: 'Disposed',     text: 'Disposed'      },
 ];
 
 const TYPE_OPTIONS: IDropdownOption[] = [
@@ -31,12 +48,18 @@ const TYPE_OPTIONS: IDropdownOption[] = [
 ];
 
 const COUNTRY_FILTER_OPTIONS: IDropdownOption[] = [
-  { key: 'all', text: 'All Countries' },
-  { key: 'IN',  text: 'India' },
-  { key: 'US',  text: 'United States' },
+  { key: 'all', text: 'All Countries'  },
+  { key: 'IN',  text: 'India'          },
+  { key: 'US',  text: 'United States'  },
 ];
 
-// Compact labels for the filter bar (OFFICE_OPTIONS labels are longer, suited for forms).
+const WARRANTY_FILTER_OPTIONS: IDropdownOption[] = [
+  { key: '',         text: 'All Warranties'         },
+  { key: 'expiring', text: 'Expiring Soon (≤30 d)'  },
+  { key: 'expired',  text: 'Expired'                },
+  { key: 'valid',    text: 'Valid (31+ days)'        },
+];
+
 const OFFICE_FILTER_LABELS: Record<string, string> = {
   GIC: 'GIC — Chennai',
   UWB: 'UWB — Gurgaon',
@@ -61,24 +84,59 @@ function getOfficeFilterOptions(country: string): IDropdownOption[] {
   return [];
 }
 
+// ── Status badge ──────────────────────────────────────────────────────────────
+
 const StatusBadge: React.FC<{ status: AssetStatus }> = ({ status }) => {
   const colors = STATUS_BADGE_COLORS[status] || { bg: '#ebebeb', text: '#333' };
   return (
     <span className={styles.statusBadge} style={{ background: colors.bg, color: colors.text }}>
-      {status}
+      {normalizeStatusLabel(status)}
     </span>
   );
 };
 
-const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onView, onEdit, onRefresh }) => {
-  const [search,         setSearch]         = useState('');
-  const [filterStatus,   setFilterStatus]   = useState<string>('');
-  const [filterType,     setFilterType]     = useState<string>('');
-  const [filterDept,     setFilterDept]     = useState<string>('');
-  const [countryFilter,  setCountryFilter]  = useState<string>('all');
-  const [officeFilter,   setOfficeFilter]   = useState<string>('all');
-  const [sortCol,        setSortCol]        = useState<string>('Title');
-  const [sortAsc,        setSortAsc]        = useState(true);
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+interface IAssetTableProps {
+  assets: IAsset[];
+  loading: boolean;
+  onAddNew:  () => void;
+  onView:    (asset: IAsset) => void;
+  onEdit:    (asset: IAsset) => void;
+  onRefresh: () => void;
+  onBulkLinkDocument?: (assetItemIds: number[], docUrl: string) => Promise<void>;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onView, onEdit, onRefresh, onBulkLinkDocument }) => {
+  const [search,          setSearch]          = useState('');
+  const [filterStatus,    setFilterStatus]    = useState<string>('');
+  const [filterType,      setFilterType]      = useState<string>('');
+  const [filterDept,      setFilterDept]      = useState<string>('');
+  const [filterWarranty,  setFilterWarranty]  = useState<string>('');
+  const [countryFilter,   setCountryFilter]   = useState<string>('all');
+  const [officeFilter,    setOfficeFilter]    = useState<string>('all');
+  const [sortCol,         setSortCol]         = useState<string>('Title');
+  const [sortAsc,         setSortAsc]         = useState(true);
+
+  // 6.13 Bulk document linking
+  const [selectedItems,   setSelectedItems]   = useState<IAsset[]>([]);
+  const [showBulkDlg,     setShowBulkDlg]     = useState(false);
+  const [bulkDocUrl,      setBulkDocUrl]       = useState('');
+  const [bulkLinking,     setBulkLinking]      = useState(false);
+  const [bulkLinkError,   setBulkLinkError]    = useState('');
+  const [bulkLinkDone,    setBulkLinkDone]     = useState(false);
+
+  const selectionRef = useRef<Selection | null>(null);
+  if (!selectionRef.current) {
+    selectionRef.current = new Selection({
+      onSelectionChanged: () => {
+        setSelectedItems((selectionRef.current?.getSelection() as IAsset[]) || []);
+      },
+    });
+  }
+  const selection = selectionRef.current;
 
   const deptOptions: IDropdownOption[] = useMemo(() => {
     const depts = Array.from(new Set(assets.map(a => a.Department).filter(Boolean))).sort();
@@ -96,6 +154,12 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
           if (a.Country !== countryFilter) return false;
           if (officeFilter !== 'all' && a.OfficeCode !== officeFilter) return false;
         }
+        if (filterWarranty) {
+          const days = AssetIdGenerator.daysUntilWarrantyExpiry(a.WarrantyExpiry);
+          if (filterWarranty === 'expired')  return days < 0;
+          if (filterWarranty === 'expiring') return days >= 0 && days <= 30;
+          if (filterWarranty === 'valid')    return days > 30;
+        }
         if (q) {
           return (
             a.Title?.toLowerCase().includes(q) ||
@@ -103,45 +167,62 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
             a.Model?.toLowerCase().includes(q) ||
             a.Vendor?.toLowerCase().includes(q) ||
             a.AssignedTo?.toLowerCase().includes(q) ||
-            a.Department?.toLowerCase().includes(q)
+            a.Department?.toLowerCase().includes(q) ||
+            a.Country?.toLowerCase().includes(q)
           );
         }
         return true;
       })
-      .sort((a: any, b: any) => {
-        const av = a[sortCol] || '';
-        const bv = b[sortCol] || '';
-        return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+      .sort((a: IAsset & Record<string, unknown>, b: IAsset & Record<string, unknown>) => {
+        const av = String(a[sortCol] || '');
+        const bv = String(b[sortCol] || '');
+        return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
       });
-  }, [assets, search, filterStatus, filterType, filterDept, countryFilter, officeFilter, sortCol, sortAsc]);
+  }, [assets, search, filterStatus, filterType, filterDept, filterWarranty, countryFilter, officeFilter, sortCol, sortAsc]);
 
-  const hasActiveFilters = !!(search || filterStatus || filterType || filterDept || countryFilter !== 'all');
+  const hasActiveFilters = !!(
+    search || filterStatus || filterType || filterDept || filterWarranty ||
+    countryFilter !== 'all' || officeFilter !== 'all'
+  );
 
   const clearAllFilters = () => {
     setSearch('');
     setFilterStatus('');
     setFilterType('');
     setFilterDept('');
+    setFilterWarranty('');
     setCountryFilter('all');
     setOfficeFilter('all');
   };
 
   const exportCSV = () => {
-    const headers = ['Asset ID','Serial Number','Model','Vendor','Type','Status','Assigned To','Department','Location','Purchase Date','Warranty Expiry','Cost (INR)','Remarks'];
+    const headers = [
+      'Asset ID', 'Type', 'Model', 'Serial Number', 'Make', 'Status',
+      'Assigned To', 'Department', 'Location', 'Country',
+      'Warranty End', 'Purchase Date', 'Cost (INR)', 'Remarks',
+    ];
     const rows = filtered.map(a => [
-      a.Title, a.SerialNumber, a.Model, a.Vendor,
-      ASSET_TYPE_LABELS[a.AssetType] || a.AssetType,
-      a.Status, a.AssignedTo, a.Department, a.AssetLocation,
-      AssetIdGenerator.formatDate(a.PurchaseDate),
+      a.Title,
+      a.AssetType,
+      a.Model,
+      a.SerialNumber,
+      a.Vendor,
+      normalizeStatusLabel(a.Status),
+      a.AssignedTo,
+      a.Department,
+      a.AssetLocation,
+      a.Country,
       AssetIdGenerator.formatDate(a.WarrantyExpiry),
-      a.Cost, a.Remarks,
+      AssetIdGenerator.formatDate(a.PurchaseDate),
+      a.Cost,
+      a.Remarks,
     ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `IT_Assets_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `IT_Assets_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -155,7 +236,10 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
     }
   };
 
-  const makeCol = (key: string, name: string, minW: number, maxW: number, onRender?: any): IColumn => ({
+  const makeCol = (
+    key: string, name: string, minW: number, maxW: number,
+    onRender?: (item: IAsset) => JSX.Element | string | null,
+  ): IColumn => ({
     key, name, fieldName: key, minWidth: minW, maxWidth: maxW,
     isResizable: true, isSorted: sortCol === key, isSortedDescending: !sortAsc,
     onColumnClick: (_e, col) => handleColClick(col),
@@ -163,24 +247,27 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
   });
 
   const columns: IColumn[] = [
-    makeCol('Title', 'Asset ID', 140, 170, (a: IAsset) => (
+    makeCol('Title', 'Asset ID', 140, 170, a => (
       <span className={styles.assetId} onClick={() => onView(a)}>{a.Title}</span>
     )),
-    makeCol('AssetType', 'Type', 60, 80, (a: IAsset) => (
-      <span title={ASSET_TYPE_LABELS[a.AssetType]}>{a.AssetType}</span>
+    makeCol('AssetType', 'Type', 55, 70, a => (
+      <span title={ASSET_TYPE_LABELS[a.AssetType] || a.AssetType}>{a.AssetType}</span>
     )),
     makeCol('Model', 'Model', 120, 200),
     makeCol('SerialNumber', 'Serial No.', 100, 150),
-    makeCol('Vendor', 'Vendor', 80, 130),
-    makeCol('Status', 'Status', 90, 120, (a: IAsset) => <StatusBadge status={a.Status} />),
+    makeCol('Vendor', 'Make', 80, 130),
+    makeCol('Status', 'Status', 90, 120, a => <StatusBadge status={a.Status} />),
     makeCol('AssignedTo', 'Assigned To', 100, 160),
     makeCol('Department', 'Department', 90, 140),
     makeCol('AssetLocation', 'Location', 80, 120),
-    makeCol('WarrantyExpiry', 'Warranty Exp.', 90, 120, (a: IAsset) => {
+    makeCol('WarrantyExpiry', 'Warranty End', 90, 120, a => {
       const days = AssetIdGenerator.daysUntilWarrantyExpiry(a.WarrantyExpiry);
-      const color = days < 0 ? '#a4262c' : days <= 30 ? '#ca5010' : days <= 90 ? '#8a3b00' : 'inherit';
-      return <span style={{ color }}>{AssetIdGenerator.formatDate(a.WarrantyExpiry)}</span>;
+      const color = (days < 0 || days <= 30) ? '#a4262c' : days <= 90 ? '#ca5010' : 'inherit';
+      return <span style={{ color, fontWeight: days <= 30 ? 600 : undefined }}>
+        {AssetIdGenerator.formatDate(a.WarrantyExpiry)}
+      </span>;
     }),
+    makeCol('Country', 'Country', 56, 70),
     {
       key: 'actions', name: '', minWidth: 64, maxWidth: 72,
       onRender: (a: IAsset) => (
@@ -204,10 +291,33 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
     },
   ];
 
+  const handleBulkLink = async () => {
+    if (!bulkDocUrl.trim() || !selectedItems.length || !onBulkLinkDocument) return;
+    setBulkLinking(true);
+    setBulkLinkError('');
+    setBulkLinkDone(false);
+    try {
+      const ids = selectedItems.map(a => a.Id!).filter(Boolean);
+      await onBulkLinkDocument(ids, bulkDocUrl.trim());
+      setBulkLinkDone(true);
+      setBulkDocUrl('');
+    } catch {
+      setBulkLinkError('Link failed. Please check the URL and try again.');
+    } finally {
+      setBulkLinking(false);
+    }
+  };
+
   const commandItems: ICommandBarItemProps[] = [
-    { key: 'add', text: 'Add Asset', iconProps: { iconName: 'Add' }, onClick: onAddNew },
-    { key: 'refresh', text: 'Refresh', iconProps: { iconName: 'Refresh' }, onClick: onRefresh },
-    { key: 'export', text: 'Export CSV', iconProps: { iconName: 'Download' }, onClick: exportCSV },
+    { key: 'add',     text: 'Add Asset',  iconProps: { iconName: 'Add'      }, onClick: onAddNew   },
+    { key: 'refresh', text: 'Refresh',    iconProps: { iconName: 'Refresh'  }, onClick: onRefresh  },
+    { key: 'export',  text: 'Export CSV', iconProps: { iconName: 'Download' }, onClick: exportCSV  },
+    ...(selectedItems.length > 0 && onBulkLinkDocument ? [{
+      key: 'linkdoc',
+      text: `Link Document (${selectedItems.length} selected)`,
+      iconProps: { iconName: 'Link' },
+      onClick: () => { setBulkDocUrl(''); setBulkLinkError(''); setBulkLinkDone(false); setShowBulkDlg(true); },
+    }] : []),
   ];
 
   return (
@@ -226,42 +336,48 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
           selectedKey={filterStatus}
           onChange={(_e, o) => setFilterStatus(o?.key as string || '')}
           className={styles.filterDrop}
-          placeholder="Filter by Status"
+          placeholder="Status"
         />
         <Dropdown
           options={TYPE_OPTIONS}
           selectedKey={filterType}
           onChange={(_e, o) => setFilterType(o?.key as string || '')}
           className={styles.filterDrop}
-          placeholder="Filter by Type"
+          placeholder="Type"
         />
         <Dropdown
           options={deptOptions}
           selectedKey={filterDept}
           onChange={(_e, o) => setFilterDept(o?.key as string || '')}
           className={styles.filterDrop}
-          placeholder="Filter by Department"
+          placeholder="Department"
         />
         <Dropdown
           options={COUNTRY_FILTER_OPTIONS}
           selectedKey={countryFilter}
           onChange={(_e, o) => {
-            const country = o?.key as string || 'all';
-            setCountryFilter(country);
+            setCountryFilter(o?.key as string || 'all');
             setOfficeFilter('all');
           }}
           className={styles.filterDrop}
-          placeholder="Filter by Country"
+          placeholder="Country"
         />
         {countryFilter !== 'all' && (
           <Dropdown
             options={getOfficeFilterOptions(countryFilter)}
             selectedKey={officeFilter}
-            onChange={(_e, o) => setOfficeFilter((o?.key as string) || 'all')}
+            onChange={(_e, o) => setOfficeFilter(o?.key as string || 'all')}
             className={styles.filterDrop}
-            placeholder="Filter by Site / Office"
+            placeholder="Site / Office"
           />
         )}
+        <Dropdown
+          options={WARRANTY_FILTER_OPTIONS}
+          selectedKey={filterWarranty}
+          onChange={(_e, o) => setFilterWarranty(o?.key as string || '')}
+          className={styles.filterDrop}
+          placeholder="Warranty"
+        />
         {hasActiveFilters && (
           <DefaultButton
             text="Clear"
@@ -291,11 +407,54 @@ const AssetTable: React.FC<IAssetTableProps> = ({ assets, loading, onAddNew, onV
           items={filtered}
           columns={columns}
           layoutMode={DetailsListLayoutMode.justified}
-          selectionMode={SelectionMode.none}
+          selectionMode={onBulkLinkDocument ? SelectionMode.multiple : SelectionMode.none}
+          selection={selection}
+          selectionPreservedOnEmptyClick
           compact
           className={`${styles.list} ${styles.fadeIn}`}
         />
       )}
+
+      {/* 6.13 Bulk Document Link Dialog */}
+      <Dialog
+        hidden={!showBulkDlg}
+        onDismiss={() => { setShowBulkDlg(false); setBulkLinkDone(false); }}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: 'Link Document to Selected Assets',
+          subText: `This will link the document URL as the Purchase Invoice on ${selectedItems.length} selected asset(s).`,
+        }}
+        modalProps={{ isBlocking: false }}
+        styles={{ main: { minWidth: 520 } }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 8 }}>
+          {selectedItems.length > 0 && (
+            <div style={{ fontSize: 12, color: '#605e5c' }}>
+              Selected: {selectedItems.map(a => a.Title).join(', ')}
+            </div>
+          )}
+          <TextField
+            label="Document URL *"
+            value={bulkDocUrl}
+            onChange={(_e, v) => setBulkDocUrl(v || '')}
+            placeholder="https://…  or  /sites/…/Shared Documents/…"
+          />
+          {bulkLinkError && <MessageBar messageBarType={MessageBarType.error}>{bulkLinkError}</MessageBar>}
+          {bulkLinkDone  && <MessageBar messageBarType={MessageBarType.success}>Document linked to {selectedItems.length} asset(s) successfully.</MessageBar>}
+        </div>
+        <DialogFooter>
+          <DefaultButton
+            primary
+            onClick={handleBulkLink}
+            disabled={!bulkDocUrl.trim() || bulkLinking || bulkLinkDone}
+          >
+            {bulkLinking ? 'Linking…' : 'Link Document'}
+          </DefaultButton>
+          <DefaultButton onClick={() => { setShowBulkDlg(false); setBulkLinkDone(false); }}>
+            {bulkLinkDone ? 'Close' : 'Cancel'}
+          </DefaultButton>
+        </DialogFooter>
+      </Dialog>
     </div>
   );
 };

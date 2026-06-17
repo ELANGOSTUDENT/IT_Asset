@@ -10,6 +10,8 @@ const LIST = 'Asset_Scrap';
 const SELECT = [
   'Id', 'Title', 'AssetItemId', 'ScrapDate', 'ScrapVendor',
   'ScrapAmount', 'ScrapAttachmentUrl', 'ScrapRemarks',
+  // 6.11 Disposal method
+  'DisposalMethod',
 ];
 
 export class AssetScrapService {

@@ -11,6 +11,7 @@ export interface IAssetAssignment {
     NextMaintenanceDate?: string;
     Remarks?: string;
     IsActive: boolean;
+    IsGuestUser?: boolean;
 }
 export declare const emptyAssignment: (assetId: string, assetItemId: number) => IAssetAssignment;
 //# sourceMappingURL=IAssetAssignment.d.ts.map

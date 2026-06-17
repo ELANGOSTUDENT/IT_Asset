@@ -9,6 +9,8 @@ export interface IRepairEntry {
     Resolution?: string;
     Remarks?: string;
     AttachmentUrl?: string;
+    MaintenanceType?: string;
+    NextMaintenanceDue?: string;
 }
 export interface IRepairEntryDraft {
     RepairDate: string;
@@ -18,6 +20,8 @@ export interface IRepairEntryDraft {
     Resolution: string;
     Remarks: string;
     AttachmentFile?: File;
+    MaintenanceType: string;
+    NextMaintenanceDue: string;
 }
 export declare const emptyRepairDraft: () => IRepairEntryDraft;
 //# sourceMappingURL=IRepairEntry.d.ts.map

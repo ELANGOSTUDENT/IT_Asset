@@ -10,29 +10,22 @@ $purple:    #7c3aed;
 $orange:    #ea580c;
 $red:       #dc2626;
 
-$text-dark: #0f172a;
-$text-mid:  #334155;
+$text-dark:  #0f172a;
+$text-mid:   #334155;
 $text-muted: #64748b;
-$text-label: #94a3b8;
 
-$border:    #e2e8f0;
-$bg-white:  #ffffff;
-$bg-alt:    #f8fafc;
+$border:   #e2e8f0;
+$bg-white: #ffffff;
 
-$shadow-card: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.07);
+$shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.07);
 $shadow-hover: 0 6px 20px rgba(0,0,0,.11), 0 2px 8px rgba(0,0,0,.07);
 $r:  14px;
-$r-sm: 10px;
 $t:  0.18s ease;
 
 // ── Animations ────────────────────────────────────────────────────────────────
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes barGrow {
-  from { width: 0 !important; opacity: 0; }
 }
 
 .fadeIn {
@@ -65,13 +58,13 @@ $t:  0.18s ease;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// KPI Row — colorful white cards
+// KPI Row
 // ══════════════════════════════════════════════════════════════════════════════
 .kpiRow {
   display: flex;
   gap: 14px;
   flex-wrap: wrap;
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .kpiCard {
@@ -104,7 +97,6 @@ $t:  0.18s ease;
   margin-bottom: 14px;
   font-size: 18px;
   flex-shrink: 0;
-  // Inline background ${color}18 from TSX will render as colored tile
 }
 
 .kpiValue {
@@ -123,273 +115,6 @@ $t:  0.18s ease;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Analysis Panels Row
-// ══════════════════════════════════════════════════════════════════════════════
-.panels {
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.panel {
-  background: $bg-white;
-  border: 1px solid $border;
-  border-radius: $r;
-  padding: 18px 20px;
-  box-shadow: $shadow-card;
-  height: 100%;
-  transition: box-shadow $t;
-
-  &:hover { box-shadow: $shadow-hover; }
-}
-
-.panelHeader {
-  font-weight: 700;
-  font-size: 11px;
-  color: $text-mid;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid $border;
-
-  i { color: $blue; font-size: 14px; }
-}
-
-// ── Bar chart ─────────────────────────────────────────────────────────────────
-.barRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  font-size: 13px;
-
-  &:last-child { margin-bottom: 0; }
-}
-
-.barLabel {
-  width: 115px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: $text-mid;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.barTrack {
-  flex: 1;
-  height: 7px;
-  background: #eef2ff;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.barFill {
-  height: 100%;
-  background: linear-gradient(90deg, $blue, $cyan);
-  border-radius: 4px;
-  min-width: 4px;
-  animation: barGrow 0.55s ease both;
-
-  @media (prefers-reduced-motion: reduce) { animation: none; }
-}
-
-.barCount {
-  width: 28px;
-  flex-shrink: 0;
-  text-align: right;
-  font-weight: 700;
-  color: $text-mid;
-  font-size: 12px;
-}
-
-// ── Status chips — inline colors from STATUS_BADGE_COLORS ────────────────────
-.statusGrid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.statusChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  border: 1px solid rgba(0,0,0,.07);
-  transition: filter $t, transform $t;
-  cursor: default;
-
-  &:hover {
-    filter: brightness(.93);
-    transform: translateY(-1px);
-  }
-}
-
-.statusCount {
-  font-weight: 700;
-  font-size: 13px;
-}
-
-// ── Department list ───────────────────────────────────────────────────────────
-.deptRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid $border;
-
-  &:last-child { border-bottom: none; }
-}
-
-.deptIcon { color: $text-label; font-size: 14px; }
-
-.deptName {
-  flex: 1;
-  color: $text-mid;
-  font-size: 13px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.deptCount {
-  font-weight: 700;
-  color: $blue;
-  font-size: 14px;
-  min-width: 24px;
-  text-align: right;
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// Warranty Alert Panel — soft amber/orange alert
-// ══════════════════════════════════════════════════════════════════════════════
-.warrantyPanel {
-  background: #fffbf5;
-  border: 1px solid #fed7aa;
-  border-left: 4px solid $orange;
-  border-radius: $r;
-  box-shadow: $shadow-card;
-  overflow: hidden;
-  margin-bottom: 24px;
-}
-
-.warrantyPanelHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: linear-gradient(90deg, #fff7ed, #fffbf5);
-  border-bottom: 1px solid #fed7aa;
-  font-weight: 700;
-  font-size: 11px;
-  color: $orange;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-
-  i { font-size: 15px; }
-}
-
-.warrantyTable {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-
-  th {
-    text-align: left;
-    padding: 9px 16px;
-    background: #fff7ed;
-    font-weight: 700;
-    border-bottom: 1px solid #fed7aa;
-    color: #92400e;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-}
-
-.warrantyRow {
-  cursor: pointer;
-  transition: background $t;
-  border-bottom: 1px solid #fef3c7;
-
-  td {
-    padding: 9px 16px;
-    vertical-align: middle;
-    color: $text-mid;
-  }
-
-  &:last-child { border-bottom: none; }
-  &:nth-child(even) td { background: rgba(255,251,235,.55); }
-  &:hover td { background: #fef3c7 !important; }
-}
-
-.assetLink {
-  color: $blue;
-  font-weight: 700;
-  font-family: 'SFMono-Regular', 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
-  letter-spacing: 0.4px;
-  cursor: pointer;
-}
-
-.daysBadge {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 11px;
-  font-weight: 700;
-  font-size: 11px;
-  letter-spacing: 0.2px;
-  // Background/color set inline in TSX
-}
-
-// ── Bar fill variants — warranty risk ─────────────────────────────────────────
-.barFillWarn {
-  height: 100%;
-  background: linear-gradient(90deg, #d97706, #f59e0b);
-  border-radius: 4px;
-  min-width: 4px;
-  animation: barGrow 0.55s ease both;
-
-  @media (prefers-reduced-motion: reduce) { animation: none; }
-}
-
-.barFillDanger {
-  height: 100%;
-  background: linear-gradient(90deg, #b91c1c, #ef4444);
-  border-radius: 4px;
-  min-width: 4px;
-  animation: barGrow 0.55s ease both;
-
-  @media (prefers-reduced-motion: reduce) { animation: none; }
-}
-
-// ── Panel caption — small note below a panel ──────────────────────────────────
-.panelCaption {
-  margin-top: 14px;
-  font-size: 10px;
-  color: $text-label;
-  font-style: italic;
-  letter-spacing: 0.02em;
-}
-
-// ── Empty state inside a panel ────────────────────────────────────────────────
-.emptyMsg {
-  display: block;
-  padding: 16px 0 4px;
-  font-size: 13px;
-  color: $text-muted;
-  font-style: italic;
 }
 
 // ── Footer CTA ────────────────────────────────────────────────────────────────

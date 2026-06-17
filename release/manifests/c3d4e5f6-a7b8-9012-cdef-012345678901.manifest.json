@@ -40,7 +40,7 @@
     "scriptResources": {
       "it-asset-manager-web-part": {
         "type": "path",
-        "path": "it-asset-manager-web-part_afff84e7b84e899681f1.js"
+        "path": "it-asset-manager-web-part_4dc389dc7b1adc3e0661.js"
       },
       "@microsoft/sp-property-pane": {
         "type": "component",
